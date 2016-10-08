@@ -23,7 +23,7 @@ import difflib.*;
 	
 	for improved readability of the output, columns of the second file may be dropped. In particular, the second FORM column is dropped
 */ 
-public class merged.New {
+public class CoNLLAlign {
 
 	final private List<String[]> conll1;
 	final private List<String[]> conll2;
@@ -34,7 +34,7 @@ public class merged.New {
 	final private int col1;
 	final private int col2;
 	
-	public merged.New(File file1, File file2, int col1, int col2) throws IOException {
+	public CoNLLAlign(File file1, File file2, int col1, int col2) throws IOException {
 		conll1=read(file1);
 		conll2=read(file2);
 		this.col1=col1;
@@ -207,7 +207,7 @@ public class merged.New {
 	}
 
 	public static void main(String[] argv) throws Exception {
-		System.err.println("synopsis: merged. FILE1.tsv FILE2.tsv [COL1 COL2] [-f] [-drop COLx..z]\n"+
+		System.err.println("synopsis: CoNLLAlign FILE1.tsv FILE2.tsv [COL1 COL2] [-f] [-drop COLx..z]\n"+
 			"\tFILEi.tsv tab-separated text files, e.g. CoNLL format\n"+
 			"\tCOLi      column number to be used for the alignment,\n"+
 			"\t          defaults to 0 (first)\n"+
@@ -238,7 +238,7 @@ public class merged.New {
 			} catch (NumberFormatException e) {}
 		}
 		
-		merged.New me = new merged.New(new File(argv[0]), new File(argv[1]),col1,col2);
+		CoNLLAlign me = new CoNLLAlign(new File(argv[0]), new File(argv[1]),col1,col2);
 		if(force) {
 			me.mergeAndPrune(new OutputStreamWriter(System.out), dropCols);
 		} else 
