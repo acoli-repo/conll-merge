@@ -23,7 +23,6 @@ import difflib.*;
 	
 	for improved readability of the output, columns of the second file may be dropped. In particular, the second FORM column is dropped
 	
-	known bugs: -split is not fully stable, yet
 */ 
 public class CoNLLAlign {
 
@@ -363,6 +362,17 @@ public class CoNLLAlign {
 			}
 		}
 	}
+
+	/** simplify IOBES annotations in merged lines produced by prune() */
+	protected static String simplifyIOBES(String line) {
+		while(line.matches(".*\t[IB]-([^+]*)\\+I-\\1.*"))
+			line=line.replaceAll("\t([IB)-([^+]*)\\+I-\\2","\t$1-$2");
+		while(line.matches(".*\tB-([^+]*)\\+E-\\1.*"))
+			line=line.replaceAll("\tB-([^+]*)\\+E-\\1","\t$1");
+		while(line.matches(".*\tI-([^+]*)\\+E-\\1.*"))
+			line=line.replaceAll("\tI-([^+]*)\\+E-\\1","\tE-$1");
+		return line;
+	}
 	
 	/** run merge() or split(), remove all comments, merge *RETOK*-... tokens with preceding token (or following, if no preceding found)<br>
 		Note: this is lossy for n:m matches, e.g.
@@ -384,7 +394,7 @@ public class CoNLLAlign {
 		String lastLine = "";
 		for(String line = in.readLine(); line!=null; line=in.readLine()) {
 			if(line.trim().equals("")) {
-				out.write(lastLine+"\n");
+				out.write(simplifyIOBES(lastLine)+"\n");
 				lastLine=line;
 			} else if(!line.trim().startsWith("#")) {
 				String fields[] = line.split(" *\t+ *");
@@ -392,11 +402,7 @@ public class CoNLLAlign {
 				if(fields[col1].startsWith("*RETOK*-")) {
 					if(lastLine.trim().equals("")) {
 						lastLine=line;
-					} else /*if(last.length!=fields.length) {	// shouldn't happen
-						out.write(lastLine+"\n");
-						// out.write("# last: "+last.length+" "+Arrays.asList(last)+" line: "+fields.length+" "+Arrays.asList(fields)+"\n");
-						lastLine=line;
-					} else */{
+					} else {
 						for(int i = 0; i<last.length; i++) 
 							if(i!=col1 && i<fields.length) {
 								if(last[i].equals("?")) last[i]=fields[i];
@@ -408,29 +414,23 @@ public class CoNLLAlign {
 						lastLine=lastLine.replaceFirst("\t$","");
 					}
 				} else if(last[col1].startsWith("*RETOK*-")) {	// only if sentence initial
-						/*if(last.length!=fields.length) {		// shouldn't happen
-							out.write(lastLine+"\n");
-							// out.write("# last: "+last.length+" "+Arrays.asList(last)+" line: "+fields.length+" "+Arrays.asList(fields)+"\n");
-							lastLine=line;
-						} else */{
-							for(int i = 0; i<last.length; i++)
-								if(i!=col1 && i<fields.length) {
-									if(fields[i].equals("?")) fields[i]=last[i];
-									else if(!last[i].equals("?")) fields[i]=(last[i]+"+"+fields[i]).replaceAll("\\*\\+\\*","*");
-								}
-						}
+						for(int i = 0; i<last.length; i++)
+							if(i!=col1 && i<fields.length) {
+								if(fields[i].equals("?")) fields[i]=last[i];
+								else if(!last[i].equals("?")) fields[i]=(last[i]+"+"+fields[i]).replaceAll("\\*\\+\\*","*");
+							}
 						lastLine="";
 						for(String s : fields)
 							lastLine=lastLine+s+"\t";
 						lastLine=lastLine.replaceFirst("\t$","");
 				} else {
-					out.write(lastLine+"\n");
+					out.write(simplifyIOBES(lastLine)+"\n");
 					lastLine=line;
 					out.flush();
 				}
 			}
 		}
-		out.write(lastLine+"\n");
+		out.write(simplifyIOBES(lastLine)+"\n");
 		out.flush();
 	}
 	
@@ -537,8 +537,7 @@ public class CoNLLAlign {
 			"\t-f        forced merge: mismatching FILE2 tokens are merged with last FILE1 token (lossy)\n"+
 			"\t          suppresses *RETOK* nodes, thus keeping the token sequence intact\n"+
 			"\t-split    by default, the tokenization of the first file is adopted for the output\n"+
-			"\t          with this flag, split tokens from both files into maximal common subtokens\n"+
-			"\t          overrides -f\n"+
+			"\t          with this flag, split tokens from both files into longest common subtokens\n"+
 			"\t-drop     drop specified FILE2 columns, by default, this includes COL2\n"+
 			"\t          default behavior can be suppressed by defining another set of columns\n"+
 			"\t          or -drop none\n"+
