@@ -44,6 +44,13 @@ public class CoNLLAlign {
 		deltas = DiffUtils.diff(forms1, forms2).getDeltas();		
 	}
 	
+	/** instead of enforcing one tokenization over another, split both tokenizations to minimal common strings and add this as a new first column
+	    to the output<br/>
+		annotations are split according to IOBES (this may lead to nested IOBES prefixes) */
+	public void split(Writer out, Set<Integer> dropCols) throws IOException {
+		// TODO
+	}
+	
 	/** run merge(), remove all comments, merge *RETOK*-... tokens with preceding token (or following, if no preceding found)<br>
 		Note: this is lossy for n:m matches, e.g.
 		 <code>
@@ -207,13 +214,15 @@ public class CoNLLAlign {
 	}
 
 	public static void main(String[] argv) throws Exception {
-		System.err.println("synopsis: CoNLLAlign FILE1.tsv FILE2.tsv [COL1 COL2] [-f] [-drop COLx..z]\n"+
+		System.err.println("synopsis: CoNLLAlign FILE1.tsv FILE2.tsv [COL1 COL2] [-f] [-drop none | -drop COLx..z]\n"+
 			"\tFILEi.tsv tab-separated text files, e.g. CoNLL format\n"+
 			"\tCOLi      column number to be used for the alignment,\n"+
 			"\t          defaults to 0 (first)\n"+
-			"\t-f        force mismatching FILE2 token to be merged with last FILE1 token (lossy)\n"+
-			"\t          suppresses *RETOK* nodes to keep the token sequence intact\n"+
+			"\t-f        forced merge: mismatching FILE2 tokens are merged with last FILE1 token (lossy)\n"+
+			"\t          suppresses *RETOK* nodes, thus keeping the token sequence intact\n"+
 			"\t-drop     drop specified FILE2 columns, by default, this includes COL2\n"+
+			"\t          default behavior can be suppressed by defining another set of columns\n"+
+			"\t          or -drop none\n"+
 			"extract the contents of the specified column, run diff\n"+
 			"and integrate the content of FILE1 and FILE2 on that basis\n"+
 			"(similar to sdiff, but optimized for CoNLL)");
@@ -228,7 +237,9 @@ public class CoNLLAlign {
 		boolean force = Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-f[,\\]].*");
 		
 		HashSet<Integer> dropCols = new HashSet<Integer>();
-		dropCols.add(col2);
+		if(!Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-drop[,\\]].*"))
+			dropCols.add(col2);
+		
 		int i = 0;
 		while(i<argv.length && !argv[i].toLowerCase().equals("-drop"))
 			i++;
