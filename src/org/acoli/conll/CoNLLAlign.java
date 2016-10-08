@@ -115,7 +115,7 @@ public class CoNLLAlign {
 				int cj=0;
 				int cd=0;
 				
-				while(ci<chars1.size() && cj<chars2.size()) {							// use I(O)BE(S) encoding to represent split annotations 
+				while(ci<chars1.size() || cj<chars2.size()) {							// use I(O)BE(S) encoding to represent split annotations 
 					
 					// build left and right
 					Delta cDelta = null;
