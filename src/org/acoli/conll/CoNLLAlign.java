@@ -82,7 +82,7 @@ public class CoNLLAlign {
 				List<Integer> chars2conll1 = new Vector<Integer>();
 				List<Integer> chars2conll2 = new Vector<Integer>();
 				
-				// left.add(new String[] { "# "+delta});
+				// left.add(new String[] { "# "+delta});			// DEBUG
 				// right.add(null);
 				
 				for(int o=0; o<delta.getOriginal().size(); o++) {
@@ -100,14 +100,13 @@ public class CoNLLAlign {
 					}
 					j++;
 				}
+				
+				List<Delta> cDeltas = DiffUtils.diff(chars1, chars2).getDeltas();	// (2) aggregate into maximal common subtokens
 
 				// left.add(new String[] { "# "+chars1 });					// DEBUG
 				// right.add(new String[] {chars2.toString()});
 				// left.add(new String[] { "# "+chars2conll1 });
-				// right.add(new String[] {chars2conll2.toString()});
-				
-				List<Delta> cDeltas = DiffUtils.diff(chars1, chars2).getDeltas();	// (2) aggregate into maximal common subtokens
-				
+				// right.add(new String[] {chars2conll2.toString()});				
 				// left.add(new String[]{ "# cDeltas: "+cDeltas.toString() });
 				// right.add(null);
 				
@@ -139,7 +138,7 @@ public class CoNLLAlign {
 						} else { // new subtoken
 							left.add(Arrays.copyOf(conll1.get(chars2conll1.get(ci)),conll1.get(chars2conll1.get(ci)).length));
 							if(left.get(left.size()-1).length>col1) left.get(left.size()-1)[col1]=chars1.get(ci);
-							right.add(Arrays.copyOf(conll2.get(chars2conll2.get(cj)),conll1.get(chars2conll2.get(cj)).length));
+							right.add(Arrays.copyOf(conll2.get(chars2conll2.get(cj)),conll2.get(chars2conll2.get(cj)).length));
 							if(right.get(right.size()-1).length>0) right.get(right.size()-1)[col2]=chars2.get(cj);
 							
 							// IOBE(S) left
@@ -192,11 +191,11 @@ public class CoNLLAlign {
 							ci++;
 							cj++;
 						} else { // new subtoken
-							left.add(conll1.get(chars2conll1.get(ci)));
-							left.get(left.size()-1)[col1]=chars1.get(ci);
-							right.add(conll2.get(chars2conll2.get(cj)));
-							right.get(right.size()-1)[col2]=chars2.get(cj);
-
+							left.add(Arrays.copyOf(conll1.get(chars2conll1.get(ci)),conll1.get(chars2conll1.get(ci)).length));
+							if(left.get(left.size()-1).length>col1) left.get(left.size()-1)[col1]=chars1.get(ci);
+							right.add(Arrays.copyOf(conll2.get(chars2conll2.get(cj)),conll2.get(chars2conll2.get(cj)).length));
+							if(right.get(right.size()-1).length>0) right.get(right.size()-1)[col2]=chars2.get(cj);
+							
 							// IOBE(S) left
 							String iobes="I-";
 							if(ci==0 || !chars2conll1.get(ci).equals(chars2conll1.get(ci-1)))
@@ -229,26 +228,83 @@ public class CoNLLAlign {
 							cj++;
 						}
 						cd++;
-					} else {
+					} else {																	// n:m replacements
 						cd++;
 						for(int o=0; o<cDelta.getOriginal().size(); o++) {
-							if(ci>0 && cj>0 && right.get(right.size()-1)==null && chars2conll1.get(ci-1).equals(chars2conll1.get(ci))) {
-								left.get(left.size()-1)[col1]=left.get(left.size()-1)[col1]+chars1.get(ci++);		// append to last stok
-							} else {																				// create new stok
-								left.add(conll1.get(chars2conll1.get(ci)));
-								if(left.get(left.size()-1).length>col1) left.get(left.size()-1)[col1]=chars1.get(ci++);
+							if(ci>0 && right.get(right.size()-1)==null && chars2conll1.get(ci-1).equals(chars2conll1.get(ci))) {
+								left.get(left.size()-1)[col1]=left.get(left.size()-1)[col1]+chars1.get(ci);		// append to last stok
+								
+								// IOBE(S)
+								if(ci==chars2conll1.size()-1) 
+									for(int f = 0; f<left.get(left.size()-1).length; f++)
+										if(f!=col1)
+											left.get(left.size()-1)[f]=left.get(left.size()-1)[f].replaceFirst("^B-","").replaceFirst("^I-","E-");
+							
+								ci++;									
+							} else {																	// create new stok
+								String[] array = Arrays.copyOf(conll1.get(chars2conll1.get(ci)),conll1.get(chars2conll1.get(ci)).length);
+								if(array.length==0) {
+									array=new String[col1+1];
+									Arrays.fill(array,"");	
+								}
+								array[col1]=chars1.get(ci);
+								left.add(array);
+								
+								// IOBE(S) left
+								String iobes="I-";
+								if(ci==0 || !chars2conll1.get(ci).equals(chars2conll1.get(ci-1)))
+									iobes="B-";
+								if(ci==chars2conll1.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","");
+								for(int f = 0; f<left.get(left.size()-1).length; f++)
+									if(f!=col1)
+										left.get(left.size()-1)[f]=(iobes+left.get(left.size()-1)[f]);							
+								if(ci>0 && !chars2conll1.get(ci).equals(chars2conll1.get(ci-1)) && left.size()>2 && left.get(left.size()-2)!=null) {
+									for(int f = 0; f<left.get(left.size()-2).length; f++)
+										if(f!=col1)
+											left.get(left.size()-2)[f]=left.get(left.size()-2)[f].replaceFirst("^B-","").replaceFirst("^I-","E-");
+								}
+								
+								ci++;
 								right.add(null);
 							}
 						}
 						
 						for(int r = 0; r<cDelta.getRevised().size(); r++) {
-							if(ci>0 && cj>0 && left.get(left.size()-1)==null && chars2conll2.get(cj-1).equals(chars2conll2.get(cj))) {
-								right.get(right.size()-1)[col2]=right.get(right.size()-1)[col2]+chars2.get(cj++);		// append to last stok
+							if(cj>0 && left.get(left.size()-1)==null && chars2conll2.get(cj-1).equals(chars2conll2.get(cj))) {
+								right.get(right.size()-1)[col2]=right.get(right.size()-1)[col2]+chars2.get(cj);		// append to last stok
+
+								// IOBE(S)
+								if(cj==chars2conll2.size()-1) 
+									for(int f = 0; f<right.get(right.size()-1).length; f++)
+										if(f!=col2)
+											right.get(right.size()-1)[f]=right.get(right.size()-1)[f].replaceFirst("^B-","").replaceFirst("^I-","E-");
+
+								cj++;
+								
 							} else {
-								right.add(conll2.get(chars2conll2.get(cj)));
-								if(right.get(right.size()-1).length>0) {
-									right.get(right.size()-1)[col2]=chars2.get(cj++);
-								} else right.set(right.size()-1,new String[]{"# warning: empty string"});
+								String[] array = Arrays.copyOf(conll2.get(chars2conll2.get(cj)),conll2.get(chars2conll2.get(cj)).length);
+								if(array.length==0) {
+									array=new String[col2+1];
+									Arrays.fill(array,"");	
+								}
+								array[col2]=chars2.get(cj);
+								right.add(array);
+								
+								// IOBE(S) right
+								String iobes="I-";
+								if(cj==0 || !chars2conll2.get(cj).equals(chars2conll2.get(cj-1)))
+									iobes="B-";
+								if(cj==chars2conll2.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","");
+								for(int f = 0; f<right.get(right.size()-1).length; f++)
+									if(f!=col2)
+										right.get(right.size()-1)[f]=(iobes+right.get(right.size()-1)[f]);							
+								if(cj>0 && !chars2conll2.get(cj).equals(chars2conll2.get(cj-1)) && right.size()>2 && right.get(right.size()-2)!=null) {
+									for(int f = 0; f<right.get(right.size()-2).length; f++)
+										if(f!=col2)
+											right.get(right.size()-2)[f]=right.get(right.size()-2)[f].replaceFirst("^B-","").replaceFirst("^I-","E-");
+								}
+								
+								cj++;
 								left.add(null);
 							}
 						}
@@ -308,7 +364,7 @@ public class CoNLLAlign {
 		}
 	}
 	
-	/** run merge(), remove all comments, merge *RETOK*-... tokens with preceding token (or following, if no preceding found)<br>
+	/** run merge() or split(), remove all comments, merge *RETOK*-... tokens with preceding token (or following, if no preceding found)<br>
 		Note: this is lossy for n:m matches, e.g.
 		 <code>
 		 a       DT      (NP (NP *       DT      (NP (NP *
@@ -318,9 +374,10 @@ public class CoNLLAlign {
 		
 		However, it will keep index references intact (better: provide an ID column)
 	*/
-	public void mergeAndPrune(Writer out, Set<Integer> dropCols) throws IOException {
+	public void prune(Writer out, boolean useMerge, Set<Integer> dropCols) throws IOException {
 		StringWriter merged = new StringWriter();
-		merge(merged,dropCols);
+		if(useMerge) merge(merged,dropCols);
+		else split(merged,dropCols);
 		
 		// strategy: merge *RETOK*s with last token; if none available, merge with the next token
 		BufferedReader in = new BufferedReader(new StringReader(merged.toString()));
@@ -335,13 +392,13 @@ public class CoNLLAlign {
 				if(fields[col1].startsWith("*RETOK*-")) {
 					if(lastLine.trim().equals("")) {
 						lastLine=line;
-					} else if(last.length!=fields.length) {	// shouldn't happen
+					} else /*if(last.length!=fields.length) {	// shouldn't happen
 						out.write(lastLine+"\n");
-						out.write("# last: "+last.length+" "+Arrays.asList(last)+" line: "+fields.length+" "+Arrays.asList(fields)+"\n");
+						// out.write("# last: "+last.length+" "+Arrays.asList(last)+" line: "+fields.length+" "+Arrays.asList(fields)+"\n");
 						lastLine=line;
-					} else {
+					} else */{
 						for(int i = 0; i<last.length; i++) 
-							if(i!=col1) {
+							if(i!=col1 && i<fields.length) {
 								if(last[i].equals("?")) last[i]=fields[i];
 								else if(!fields[i].equals("?")) last[i]=(last[i]+"+"+fields[i]).replaceAll("\\*\\+\\*","*");
 							}
@@ -351,13 +408,13 @@ public class CoNLLAlign {
 						lastLine=lastLine.replaceFirst("\t$","");
 					}
 				} else if(last[col1].startsWith("*RETOK*-")) {	// only if sentence initial
-						if(last.length!=fields.length) {		// shouldn't happen
+						/*if(last.length!=fields.length) {		// shouldn't happen
 							out.write(lastLine+"\n");
-							out.write("# last: "+last.length+" "+Arrays.asList(last)+" line: "+fields.length+" "+Arrays.asList(fields)+"\n");
+							// out.write("# last: "+last.length+" "+Arrays.asList(last)+" line: "+fields.length+" "+Arrays.asList(fields)+"\n");
 							lastLine=line;
-						} else {
+						} else */{
 							for(int i = 0; i<last.length; i++)
-								if(i!=col1) {
+								if(i!=col1 && i<fields.length) {
 									if(fields[i].equals("?")) fields[i]=last[i];
 									else if(!last[i].equals("?")) fields[i]=(last[i]+"+"+fields[i]).replaceAll("\\*\\+\\*","*");
 								}
@@ -513,10 +570,10 @@ public class CoNLLAlign {
 		}
 		
 		CoNLLAlign me = new CoNLLAlign(new File(argv[0]), new File(argv[1]),col1,col2);
-		if(split) {
+		if(force) {
+			me.prune(new OutputStreamWriter(System.out), !split, dropCols);
+		} else if(split) {
 			me.split(new OutputStreamWriter(System.out), dropCols);
-		} else if(force) {
-			me.mergeAndPrune(new OutputStreamWriter(System.out), dropCols);
 		} else 
 			me.merge(new OutputStreamWriter(System.out),dropCols);
 	}
@@ -528,7 +585,7 @@ public class CoNLLAlign {
 			if(line.trim().startsWith("#")) 
 				result.add(new String[]{ line });
 			else 
-				result.add(line.split(" *\t+ *"));
+				result.add(line.replaceAll("[\t ]*$","").split(" *\t+ *"));
 		}
 		return result;
 	}
