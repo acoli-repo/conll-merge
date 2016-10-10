@@ -7,7 +7,7 @@ import org.w3c.dom.*;
 public class SRL2Conll {
 	public static void main(String[] argv) throws Exception {
 		System.err.println("SRL2Conll SRL CoNLL\n"+
-			"read SRL data (as produced by merge-pb-nb.sh+splitter.sh) from SRL, apply it to (PTB-)CoNLL files\n"+
+			"read SRL data (as produced by normalize-propbank.sh+splitter.sh, etc.) from SRL, apply it to (PTB-)CoNLL files\n"+
 			"both files have to refer to the same text\n"+
 			"note that the CoNLL file *must* be a PTB (mrg) conll file incl. PTB parse, PTB empty elements, \n"+
 			"original tokenization, with FORM/WORD not preceded by a numerical index\n");

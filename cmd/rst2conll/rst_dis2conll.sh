@@ -1,7 +1,9 @@
 #!/bin/bash
-echo $0: read RSTDTB *dis file from stdin and write PTB-CoNLL-style lisp file to stdout 1>&2;
+echo $0: read RSTDTB *dis file'(s)' from stdin or args and write PTB-CoNLL-style lisp file to stdout 1>&2;
+
+cat $* | \
 perl -pe '
-	s/\/\/TT_ERR//g;																# some kind of errors
+	s/\/\/TT_ERR//g;																# some kind of debug information in the original dis file
 	
 	s/(Nucleus|Satellite) \((span|leaf)[^\)]*\) \(rel2par ([^\)]*)\)/$3_\l$1/g;		# map to PTB-like lisp structures (text-level)
 	s/_satellite//g;
