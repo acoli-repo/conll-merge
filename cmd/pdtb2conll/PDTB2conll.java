@@ -33,7 +33,7 @@ public class PDTB2conll {
 							int start=Integer.parseInt(lines[i-2].replaceFirst("[^0-9].*",""));
 							int end1=Integer.parseInt(lines[i-2].replaceFirst(";.*","").replaceAll(".*[^0-9]",""));
 							int start2=Integer.parseInt(lines[i-2].replaceFirst("^.*;","").replaceAll("[^0-9].*",""));
-							String remainder=lines[i-2].replaceFirst("^.*;","").replaceAll("^[0-9]*","");
+							String remainder=lines[i-2].replaceFirst("^[^;]*;","").replaceAll("^[0-9]*","");
 							while(end1<start2-1) {
 								text=text.substring(0,end1-start)+" "+text.substring(end1-start);
 								end1++;
@@ -51,7 +51,7 @@ public class PDTB2conll {
 									!toks.get(poss.indexOf(pos)).startsWith(tok) && // loose check might produce incomplete text or duplicate lines for punctuation
 									!tok.startsWith(toks.get(poss.indexOf(pos)))) {
 									System.err.println("warning: trying to overwrite token \""+toks.get(poss.indexOf(pos))+"\" with \""+tok+"\" at "+pos);
-									anno=anno+" <"+tok+" >";
+									anno=anno+" <"+tok+">";
 								}
 							} else {
 								try {
@@ -92,11 +92,11 @@ public class PDTB2conll {
 		for(int i = 0; i<toks.size(); i++) {
 			int pos=poss.get(i);
 			String tok = toks.get(i);
-			if(lastPos<pos) System.out.println("[...]");
+			if(lastPos<pos) System.out.println("# ...");
 			System.out.println(tok+"\t"+pos+".."+(pos+tok.length()+1)+"\t"+annos.get(i));
 			lastPos=pos+tok.length()+1;
 		}
-		System.out.println("[...]");
+		System.out.println("# ...");
 	}
 
 	public static void main(String[] argv) throws Exception {
