@@ -32,10 +32,21 @@ else
 	test.pdtb2conll.sh \
 	test.rst2conll.sh \
 	test.pdgb2conll.sh; do
-		echo test `echo $file | sed s/'^test\.'//` 1>&2;
-		./$file 2>&1 | tee $file.log | \
-		sed s/'...............................................................................'/'&\n'/g | \
-		sed s/'^'/'    '/g 1>&2;
-		echo 1>&2;
+		if [ -e $file.log ] ; then
+			echo found $file.log, remove before re-running 1>&2;
+		else
+			echo test `echo $file | sed s/'^test\.'//` 1>&2;
+			./$file 2>&1 | tee $file.log | \
+			sed -r -e s/'^'/'  '/g \
+				-e s/'[^\n]{78}'/'&\n  '/g 1>&2;
+			echo 1>&2;
+		fi;
 	done;
+
+	echo 1>&2
+	echo run a number of general validity tests on generated CoNLL files 1>&2
+	if javac ../src/org/acoli/conll/CoNLLChecks.java; then
+		java -classpath ../src org.acoli.conll.CoNLLChecks `find conll | grep '.conll$'`
+	fi;
+
 fi;
