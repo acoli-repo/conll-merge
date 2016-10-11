@@ -8,15 +8,18 @@ then
 		for file1 in conll/*.conll; do
 			for file2 in conll/*.conll; do
 				if [ $file1 != $file2 ]; then
-					echo run CoNLLAlign $file1 $file2 1>&2;
 					TGT=merge/`echo $file1 | sed s/'.*\/'//`_`echo $file2 | sed s/'.*\/'//`.merged.conll;
-					java -classpath ../src/$PATH_SEPARATOR../lib/diffutils-1.2.1.jar org/acoli/conll/CoNLLAlign $file1 $file2 > $TGT
-					echo 1>&2;
-					
-					if javac ../src/org/acoli/conll/CoNLLChecks.java; then
-						java -classpath ../src org.acoli.conll.CoNLLChecks $TGT;
+					if [ -e $TGT ]; then echo found $TGT, skipping CoNLLAlign $file1 $file2 1>&2;
+					else 
+						echo run CoNLLAlign $file1 $file2 '>' $TGT 1>&2;
+						java -classpath ../src/$PATH_SEPARATOR../lib/diffutils-1.2.1.jar org/acoli/conll/CoNLLAlign $file1 $file2 > $TGT
+						echo 1>&2;
+						
+						if javac ../src/org/acoli/conll/CoNLLChecks.java; then
+							java -classpath ../src org.acoli.conll.CoNLLChecks $TGT;
+						fi;
+						echo 1>&2;
 					fi;
-					echo 1>&2;
 				fi;
 			done;
 		done;

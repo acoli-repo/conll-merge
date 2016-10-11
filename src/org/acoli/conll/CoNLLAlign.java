@@ -313,7 +313,16 @@ public class CoNLLAlign {
 			
 			// write left and right if at sentence break or at end
 			if(i>=conll1.size() || j>=conll2.size() || (forms1.get(i).trim().equals("") && forms2.get(j).trim().equals(""))) {
-				int leftLength = 0;  for(String[] l : left)  if(l!=null && l.length>leftLength)  leftLength=l.length;
+				write(left,right,dropCols,out);
+				left.clear();
+				right.clear();
+			}
+		}
+	}
+
+	/** internally called by split() and merge() */
+	private void write(List<String[]> left, List<String[]> right, Set<Integer> dropCols, Writer out) throws IOException {
+						int leftLength = 0;  for(String[] l : left)  if(l!=null && l.length>leftLength)  leftLength=l.length;
 				int rightLength = 0; for(String[] l : right) if(l!=null && l.length>rightLength) rightLength=l.length;
 				for(int line = 0; line<left.size(); line++) {
 										
@@ -344,25 +353,27 @@ public class CoNLLAlign {
 						int col=0;
 						if(right.get(line)!=null) {
 							while(col<right.get(line).length) {
-								if(!dropCols.contains(col)) out.write(right.get(line)[col]+"\t");
+								if(!dropCols.contains(col)) { 
+									out.write(right.get(line)[col]+"\t");
+									if(col<rightLength-1) out.write("\t");
+								}
 								col++;
 							}
 						}
 						if((right.get(line)!=null && right.get(line).length>0 && !right.get(line)[0].trim().startsWith("#")) || (left.get(line)!=null && left.get(line).length>0 && !left.get(line)[0].trim().startsWith("#")))
 							while(col<rightLength) {
-								if(!dropCols.contains(col)) out.write("?\t");
+								if(!dropCols.contains(col)) {
+									out.write("?");
+									if(col<rightLength-1) out.write("\t");
+								}
 								col++;
 							}
 						out.write("\n");
 					}
 					out.flush();
 				}
-				left.clear();
-				right.clear();
-			}
-		}
 	}
-
+	
 	/** simplify IOBES annotations in merged lines produced by prune() */
 	protected static String simplifyIOBES(String line) {
 		while(line.matches(".*\t[IB]-([^+]*)\\+I-\\1.*"))
@@ -479,50 +490,7 @@ public class CoNLLAlign {
 			
 			// write left and right if at sentence break or at end
 			if(i>=conll1.size() || j>=conll2.size() || (forms1.get(i).trim().equals("") && forms2.get(j).trim().equals(""))) {
-				int leftLength = 0;  for(String[] l : left)  if(l!=null && l.length>leftLength)  leftLength=l.length;
-				int rightLength = 0; for(String[] l : right) if(l!=null && l.length>rightLength) rightLength=l.length;
-				for(int line = 0; line<left.size(); line++) {
-					
-					// keep empty lines if one on the left
-					if((left.get(line)!=null && left.get(line).length==1 && left.get(line)[0].trim().equals("")) && (right.get(line)==null || (right.get(line).length==1 && right.get(line)[0].trim().equals("")))) {
-						out.write("\n");
-					} else if(left.get(line)==null && right.get(line).length==1 && right.get(line)[0].trim().equals("")) {
-						// nothing (insertions of empty lines from the right)
-					} else {
-						
-						// write left side
-						if(left.get(line)==null) {
-							if(right.get(line)!=null && right.get(line).length>0 && !right.get(line)[0].trim().startsWith("#"))
-								for(int col=0; col<leftLength; col++)
-									if(col==col1) out.write("*RETOK*-"+right.get(line)[col2]+"\t"); 
-									else out.write("?\t");
-						} else {
-							int col = 0;
-							while(col<left.get(line).length)
-								out.write(left.get(line)[col++]+"\t");
-							while(col<leftLength) {
-								out.write("?\t");
-								col++;
-							}
-						}
-						
-						// write right side
-						int col=0;
-						if(right.get(line)!=null) {
-							while(col<right.get(line).length) {
-								if(!dropCols.contains(col)) out.write(right.get(line)[col]+"\t");
-								col++;
-							}
-						}
-						if((right.get(line)!=null && right.get(line).length>0 && !right.get(line)[0].trim().startsWith("#")) || (left.get(line)!=null && left.get(line).length>0 && !left.get(line)[0].trim().startsWith("#")))
-							while(col<rightLength) {
-								if(!dropCols.contains(col)) out.write("?\t");
-								col++;
-							}
-						out.write("\n");
-					}
-					out.flush();
-				}
+				write(left,right,dropCols, out);
 				left.clear();
 				right.clear();
 			}
