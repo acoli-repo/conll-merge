@@ -54,7 +54,7 @@ public class PDGB2conll {
 				if(tgt2rel2id.get(seg)!=null)
 					for(String rel : tgt2rel2id.get(seg).keySet())
 						anno=anno.trim()+"\t"+tgt2rel2id.get(seg).get(rel)+":"+"Arg1:"+rel;
-				anno=anno.replaceAll("\t",";").trim();
+				anno=anno.trim().replaceAll("\t",";");
 				if(anno.equals("")) anno="_";
 				for(String tok : tokenize(line))
 					System.out.println(tok+"\t"+anno);
