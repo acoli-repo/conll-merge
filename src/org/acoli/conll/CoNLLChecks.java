@@ -21,7 +21,8 @@ public class CoNLLChecks {
 				+ "    (limited to empty elements in PTB primary data [WORD aka FORM column] and\n"
 				+ "    WORD place holders in LISP-style annotations [e.g., CFG parses, e.g., PSD column])\n"
 				+ "    We only permit * to occur exactly once in a cell (as in PSD column) or in the\n"
-				+ "    pattern \"^\\*[a-zA-Z0-9]+\\*.*\" (empty tokens in PTB WORD)\n"
+				+ "    pattern \"^\\*[a-zA-Z0-9]+\\*.*\" (empty tokens in PTB WORD). We also add an\n"
+				+ "    exception for *RETOK*- which may be iterated\n"
 				+ "(5) cells without content (empty cells should have _)");							// ok
 		
 		List<Reader> ins = new Vector<Reader>();
@@ -110,11 +111,11 @@ public class CoNLLChecks {
 						}
 
 					// test (4)
-						if(fields[i].replaceAll("[^\\*]","").length()>2) {
+						if(fields[i].replaceAll("^\\*RETOK\\*-","").replaceAll("[^\\*]","").length()>2) {
 							report.add(file+", line "+linenr+": STAR ERROR in colum "+i+": found more than two * in \""+fields[i]+"\"");
 							errors++;
 						}
-						if(fields[i].matches(".*\\*.*\\*.*") && !fields[i].matches("^\\*[a-zA-Z0-9]+\\*.*")) {
+						if(fields[i].replaceAll("^\\*RETOK\\*-","").matches(".*\\*.*\\*.*") && !fields[i].matches("^\\*[a-zA-Z0-9]+\\*.*")) {
 							report.add(file+", line "+linenr+": STAR ERROR in colum "+i+": invalid empty element marker in \""+fields[i]+"\"");						   
 							errors++;
 						}

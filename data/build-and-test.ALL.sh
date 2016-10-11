@@ -48,5 +48,12 @@ else
 	if javac ../src/org/acoli/conll/CoNLLChecks.java; then
 		java -classpath ../src org.acoli.conll.CoNLLChecks `find conll | grep '.conll$'`
 	fi;
-
+	
+	echo 1>&2
+	echo create and validate pairwise merges 1>&2
+	if [ -e test.CoNLLAlign.sh.log ]; then 
+		echo found test.CoNLLAlign.sh.log, remove before re-running 1>&2;
+	else
+		./test.CoNLLAlign.sh 2>&1 | tee test.CoNLLAlign.sh.log 1>&2;
+	fi;
 fi;
