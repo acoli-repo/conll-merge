@@ -37,7 +37,7 @@ perl -pe '																			# create conll-like columns
 		s/^([^\t\n]*)(\t.* )([^\(\) \n]+)( \*)/$3$2*\n$1\t$4/;
 	};
 	s/(\*) +([^\)\( \n\*]+) +\)/$1\n$2\t\* \)/g;
-	s/\n(\t.*\([^ \n]* )([^ \(\) \n]*)( *\))/\n$2\t$1*$3/g;								# (repair single word texts)
-	s/^(\t.*\([^ \n]* )([^ \(\) \n]*)( *\))/$2\t$1*$3/g;								# (repair single word texts)
+	s/\n(\t[^\t\n]*\([^\t \n]* )([^ \t\(\) \n]*)( *\))/\n$2$1*$3/g;								# (repair single word texts)
+	s/^(\t[^\t\n]*\([^ \n\t]* )([^\t \(\) \n]*)( *\))/$2$1*$3/g;								# (repair single word texts)
 '
 # tokenize

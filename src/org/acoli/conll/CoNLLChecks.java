@@ -60,7 +60,7 @@ public class CoNLLChecks {
 					}
 					lastFields=null;
 				} else if(!line.trim().startsWith("#")) {
-					String[] fields = line.split("\\s*\t\\s*");
+					String[] fields = line.split("\t");
 					
 					// test (1)
 					if(lastFields!=null && fields.length!=cols) {
@@ -143,7 +143,7 @@ public class CoNLLChecks {
 			// test (2)
 			for(int i = 0; i<openPars.size(); i++)
 				while(!openPars.get(i).isEmpty()) {
-					report.add(file+", line "+openPars.get(i).pop()+": CLOSE PAR ERROR in column "+i+": found no opening (");
+					report.add(file+", line "+openPars.get(i).pop()+": CLOSE PAR ERROR in column "+i+": found no closing )");
 					errors++;
 				}
 								
