@@ -77,6 +77,16 @@ public class CoNLLAlign {
 					right.add(conll2.get(j++));
 				}
 				d++;
+			} else if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && conll1.get(i).length>0 && conll1.get(i)[0].trim().startsWith("#") && delta.getType().equals(Delta.TYPE.CHANGE)) {
+				// left.add(new String[] { "# override comment replacement"});
+				// right.add(null);
+				left.add(conll1.get(i++));
+				right.add(null);
+				for(int r = 0; r<delta.getRevised().size(); r++) {
+					left.add(null);
+					right.add(conll2.get(j++));
+				}
+				d++;
 			} else if(delta==null || delta.getOriginal().getPosition()>i) {					// no change
 				left.add(conll1.get(i++));
 				right.add(conll2.get(j++));
@@ -356,21 +366,21 @@ public class CoNLLAlign {
 
 							if((left.get(line)==null) ||
 							   col>=left.get(line).length) {
-								   if(!right.get(line)[0].trim().startsWith("#")) {
+								   if(right.get(line)==null || !right.get(line)[0].trim().startsWith("#")) {
 										if(col==col1 && right.get(line)!=null && right.get(line).length>col2)
 											out.write("*RETOK*-"+right.get(line)[col2]); 
 										else if(lastValue!=null && lastValue.matches("^[BI]-.*") && nextValue!=null && 
 										   nextValue.matches("^[IE]"+lastValue.replaceFirst("^.",""))) {
 											out.write("I"+lastValue.replaceFirst("^.",""));								// IOBES inference/repair
 										} else {
-											out.write("? ("+lastValue+", "+nextValue+")");								// default (no IOBES inference)
+											out.write("?");								// default (no IOBES inference)
 										};
 								   }
 							   } else {
 								   out.write(left.get(line)[col]);
 							   }
-							out.write("\t");
-						} 
+							if(left.get(line)!=null || !right.get(line)[0].trim().startsWith("#")) out.write("\t");
+						}
 						
 						// write right side
 						int col=0;
@@ -503,6 +513,16 @@ public class CoNLLAlign {
 			
 			if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && conll1.get(i).length==1 && conll1.get(i)[0].trim().equals("") && delta.getType().equals(Delta.TYPE.CHANGE)) {
 				// left.add(new String[] { "# override empty line replacement"});
+				// right.add(null);
+				left.add(conll1.get(i++));
+				right.add(null);
+				for(int r = 0; r<delta.getRevised().size(); r++) {
+					left.add(null);
+					right.add(conll2.get(j++));
+				}
+				d++;
+			} else if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && conll1.get(i).length>0 && conll1.get(i)[0].trim().startsWith("#") && delta.getType().equals(Delta.TYPE.CHANGE)) {
+				// left.add(new String[] { "# override comment replacement"});
 				// right.add(null);
 				left.add(conll1.get(i++));
 				right.add(null);

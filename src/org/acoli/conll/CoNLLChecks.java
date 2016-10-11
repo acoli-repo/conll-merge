@@ -23,7 +23,8 @@ public class CoNLLChecks {
 				+ "    We only permit * to occur exactly once in a cell (as in PSD column) or in the\n"
 				+ "    pattern \"^\\*[a-zA-Z0-9]+\\*.*\" (empty tokens in PTB WORD). We also add an\n"
 				+ "    exception for *RETOK*- which may be iterated\n"
-				+ "(5) cells without content (empty cells should have _)");							// ok
+				+ "(5) cells without content (empty cells should have _)\n"							// ok
+				+ "(6) use full-line comments, not in-line comments (to ease merging)\n");			// todo
 		
 		List<Reader> ins = new Vector<Reader>();
 		List<String> files = Arrays.asList(argv);
@@ -67,6 +68,12 @@ public class CoNLLChecks {
 						errors++;
 					}
 
+					// test (6)
+					if(line.contains("#")) {
+						report.add(file+", line "+linenr+": INLINE_COMMENT WARNING: avoid inline comments, use full-line comments, instead");
+						warnings++;
+					}
+					
 					cols=fields.length;
 					
 					for(int i = 0; i<cols; i++) {
