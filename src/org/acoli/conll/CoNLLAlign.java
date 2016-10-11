@@ -330,7 +330,9 @@ public class CoNLLAlign {
 		}
 	}
 
-	/** internally called by split() and merge() */
+	/** internally called by split() and merge() <br/>
+	    note that rather than filling up null lines with ?, it also attempts to restore IOBES annotations
+	*/
 	private void write(List<String[]> left, List<String[]> right, Set<Integer> dropCols, Writer out) throws IOException {
 				int leftLength = 0;  for(String[] l : left)  if(l!=null && l.length>leftLength)  leftLength=l.length;
 				int rightLength = 0; for(String[] l : right) if(l!=null && l.length>rightLength) rightLength=l.length;
@@ -344,20 +346,31 @@ public class CoNLLAlign {
 					} else {
 						
 						// write left side
-						if(left.get(line)==null) {
-							if(right.get(line)!=null && !right.get(line)[0].trim().startsWith("#"))
-								for(int col=0; col<leftLength; col++)
-									if(col==col1) out.write("*RETOK*-"+right.get(line)[col2]+"\t"); 
-									else out.write("?\t");
-						} else {
-							int col = 0;
-							while(col<left.get(line).length)
-								out.write(left.get(line)[col++]+"\t");
-							while(col<leftLength) {
-								out.write("?\t");
-								col++;
-							}
-						}
+						for(int col = 0; col<leftLength; col++) {
+							String lastValue = null;									
+							for(int a = line-1; a>=0 && lastValue==null; a--)
+								if(left.get(a)!=null && left.get(a).length>col) lastValue=left.get(a)[col];
+							String nextValue = null;
+							for(int a = line+1; a<left.size() && nextValue==null; a++)
+								if(left.get(a)!=null && left.get(a).length>col) nextValue=left.get(a)[col];
+
+							if((left.get(line)==null) ||
+							   col>=left.get(line).length) {
+								   if(!right.get(line)[0].trim().startsWith("#")) {
+										if(col==col1 && right.get(line)!=null && right.get(line).length>col2)
+											out.write("*RETOK*-"+right.get(line)[col2]); 
+										else if(lastValue!=null && lastValue.matches("^[BI]-.*") && nextValue!=null && 
+										   nextValue.matches("^[IE]"+lastValue.replaceFirst("^.",""))) {
+											out.write("I"+lastValue.replaceFirst("^.",""));								// IOBES inference/repair
+										} else {
+											out.write("? ("+lastValue+", "+nextValue+")");								// default (no IOBES inference)
+										};
+								   }
+							   } else {
+								   out.write(left.get(line)[col]);
+							   }
+							out.write("\t");
+						} 
 						
 						// write right side
 						int col=0;
@@ -373,7 +386,20 @@ public class CoNLLAlign {
 						if((right.get(line)!=null && right.get(line).length>0 && !right.get(line)[0].trim().startsWith("#")) || (left.get(line)!=null && left.get(line).length>0 && !left.get(line)[0].trim().startsWith("#")))
 							while(col<rightLength) {
 								if(!dropCols.contains(col)) {
-									out.write("?");
+									
+									String lastValue = null;									
+									for(int a = line-1; a>=0 && lastValue==null; a--)
+										if(right.get(a)!=null && right.get(a).length>col) lastValue=right.get(a)[col];										
+									String nextValue = null;
+									for(int a = line+1; a<right.size() && nextValue==null; a++)
+										if(right.get(a)!=null && right.get(a).length>col) nextValue=right.get(a)[col];										
+									if(lastValue!=null && lastValue.matches("^[BI]-.*") && nextValue!=null && 
+									   nextValue.matches("^[IE]"+lastValue.replaceFirst("^.",""))) {
+										out.write("I"+lastValue.replaceFirst("^.",""));									// IOBES inference/repair
+									} else {
+										out.write("?");									// default (no IOBES inference)
+									};
+
 									if(col<rightLength-1) out.write("\t");
 								}
 								col++;
