@@ -322,7 +322,7 @@ public class CoNLLAlign {
 
 	/** internally called by split() and merge() */
 	private void write(List<String[]> left, List<String[]> right, Set<Integer> dropCols, Writer out) throws IOException {
-						int leftLength = 0;  for(String[] l : left)  if(l!=null && l.length>leftLength)  leftLength=l.length;
+				int leftLength = 0;  for(String[] l : left)  if(l!=null && l.length>leftLength)  leftLength=l.length;
 				int rightLength = 0; for(String[] l : right) if(l!=null && l.length>rightLength) rightLength=l.length;
 				for(int line = 0; line<left.size(); line++) {
 										
@@ -354,8 +354,8 @@ public class CoNLLAlign {
 						if(right.get(line)!=null) {
 							while(col<right.get(line).length) {
 								if(!dropCols.contains(col)) { 
-									out.write(right.get(line)[col]+"\t");
-									if(col<rightLength-1) out.write("\t");
+									out.write(right.get(line)[col]);
+									if(col<rightLength-2) out.write("\t");
 								}
 								col++;
 							}
@@ -364,7 +364,7 @@ public class CoNLLAlign {
 							while(col<rightLength) {
 								if(!dropCols.contains(col)) {
 									out.write("?");
-									if(col<rightLength-1) out.write("\t");
+									if(col<rightLength-2) out.write("\t");
 								}
 								col++;
 							}
