@@ -66,8 +66,18 @@ public class CoNLLAlign {
 				// left.add(new String[] { "# "+delta });
 				// right.add(null);
 			// }
-			
-			if(delta==null || delta.getOriginal().getPosition()>i) {					// no change
+																				// override empty line replacements
+			if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && conll1.get(i).length==1 && conll1.get(i)[0].trim().equals("") && delta.getType().equals(Delta.TYPE.CHANGE)) {
+				// left.add(new String[] { "# override empty line replacement"});
+				// right.add(null);
+				left.add(conll1.get(i++));
+				right.add(null);
+				for(int r = 0; r<delta.getRevised().size(); r++) {
+					left.add(null);
+					right.add(conll2.get(j++));
+				}
+				d++;
+			} else if(delta==null || delta.getOriginal().getPosition()>i) {					// no change
 				left.add(conll1.get(i++));
 				right.add(conll2.get(j++));
 			} else if (delta.getOriginal().size()*delta.getRevised().size()==1) { 		// 1:1 replacements
@@ -355,7 +365,7 @@ public class CoNLLAlign {
 							while(col<right.get(line).length) {
 								if(!dropCols.contains(col)) { 
 									out.write(right.get(line)[col]);
-									if(col<rightLength-2) out.write("\t");
+									if(col<rightLength-1) out.write("\t");
 								}
 								col++;
 							}
@@ -364,7 +374,7 @@ public class CoNLLAlign {
 							while(col<rightLength) {
 								if(!dropCols.contains(col)) {
 									out.write("?");
-									if(col<rightLength-2) out.write("\t");
+									if(col<rightLength-1) out.write("\t");
 								}
 								col++;
 							}
@@ -460,12 +470,22 @@ public class CoNLLAlign {
 			Delta delta = null;
 			if(d<deltas.size()) delta = deltas.get(d);
 			
-			// if(delta!=null && delta.getOriginal().getPosition()==i) { 		// debug
-				// left.add(new String[] { "# "+delta });
-				// right.add(null);
+			// if(delta!=null && delta.getOriginal().getPosition()==i) { 		
+				// left.add(new String[] { "# "+delta });						// debug
+				// right.add(null);				
 			// }
 			
-			if(delta==null || delta.getOriginal().getPosition()>i) {					// no change
+			if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && conll1.get(i).length==1 && conll1.get(i)[0].trim().equals("") && delta.getType().equals(Delta.TYPE.CHANGE)) {
+				// left.add(new String[] { "# override empty line replacement"});
+				// right.add(null);
+				left.add(conll1.get(i++));
+				right.add(null);
+				for(int r = 0; r<delta.getRevised().size(); r++) {
+					left.add(null);
+					right.add(conll2.get(j++));
+				}
+				d++;
+			} else if(delta==null || delta.getOriginal().getPosition()>i) {					// no change
 				left.add(conll1.get(i++));
 				right.add(conll2.get(j++));
 				// out.write(Arrays.asList(conll1.get(i++))+"\t|\t"+Arrays.asList(conll2.get(j++))+"\n");
