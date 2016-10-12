@@ -439,7 +439,9 @@ public class CoNLLAlign {
 		 cease-fire      NN      *)      CD+HYPH+NN+NN+HYPH+NN   (NML *)+*)
 		</code>
 		
-		However, it will keep index references intact (better: provide an ID column)
+		However, it will keep index references intact (better: provide an ID column)<br/>
+		
+		when merging multiple lines, we replace the (non-first) * placeholder of *RETOK* lines with the original FORM		
 	*/
 	public void prune(Writer out, boolean useMerge, Set<Integer> dropCols) throws IOException {
 		StringWriter merged = new StringWriter();
@@ -462,8 +464,9 @@ public class CoNLLAlign {
 					} else {
 						for(int i = 0; i<last.length; i++) 
 							if(i!=col1 && i<fields.length) {
-								if(last[i].equals("?")) last[i]=fields[i];
-								else if(!fields[i].equals("?")) last[i]=(last[i]+"+"+fields[i]).replaceAll("\\*\\+\\*","*");
+								if(last[i].equals("?")) last[i]=fields[i].replaceFirst("\\*",fields[col1]);
+								else if(!fields[i].equals("?"))
+									last[i]= last[i]+"+"+fields[i].replaceFirst("\\*",fields[col1]);
 							}
 						lastLine="";
 						for(String s : last)
@@ -473,8 +476,10 @@ public class CoNLLAlign {
 				} else if(last[col1].startsWith("*RETOK*-")) {	// only if sentence initial
 						for(int i = 0; i<last.length; i++)
 							if(i!=col1 && i<fields.length) {
-								if(fields[i].equals("?")) fields[i]=last[i];
-								else if(!last[i].equals("?")) fields[i]=(last[i]+"+"+fields[i]).replaceAll("\\*\\+\\*","*");
+								if(fields[i].equals("?")) 
+									fields[i]=last[i].replaceFirst("\\*",last[col1]);
+								else if(!last[i].equals("?"))
+									fields[i]=last[i].replaceFirst("\\*",last[col1]) + "+"+fields[i];
 							}
 						lastLine="";
 						for(String s : fields)
