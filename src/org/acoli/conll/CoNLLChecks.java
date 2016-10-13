@@ -112,7 +112,7 @@ public class CoNLLChecks {
 										errors++;
 									}
 								if(iobesPfx.matches("^[EI]") && 
-								   !lastFields[i].replaceAll(".*\\+ *","").replaceFirst("^[BI]-","").replaceFirst("\\+.*","").equals(iobesBody.replaceFirst("\\+.*",""))) {
+								   !lastFields[i].replaceAll(".*\\+ *","").replaceFirst("^[BI]-","").replaceFirst("\\+.*","").replaceFirst("\\*RETOK\\*-[^ \\)]*","\\*").equals(iobesBody.replaceFirst("\\+.*","").replaceFirst("\\*RETOK\\*-[^ \\)]*","\\*"))) {
 									report.add(file+", line "+linenr+": IOBES ERROR in column "+i+": IOBES expression \""+fields[i]+"\" does not continue \""+lastFields[i]+"\"");
 									errors++;
 								}
