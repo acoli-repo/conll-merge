@@ -92,7 +92,7 @@ public class CoNLLChecks {
 							}
 						}
 
-						// test (3)
+						// test (3) (extended for -split + -f, i.e., multiple, +-concatenated IOBES statements)
 						if(fields[i].split("\\-").length>1) {
 							String iobesPfx = fields[i].replaceFirst("\\-.*","");
 							String iobesBody = fields[i].replaceFirst("^[^\\-]*\\-","");
@@ -111,7 +111,8 @@ public class CoNLLChecks {
 										report.add(file+", line "+linenr+": IOBES ERROR in column "+i+": IOBES expression \""+fields[i]+"\" does not continue \""+lastFields[i]+"\"");
 										errors++;
 									}
-								if(iobesPfx.matches("^[EI]") && !lastFields[i].replaceFirst("^[BI]-","").equals(iobesBody)) {
+								if(iobesPfx.matches("^[EI]") && 
+								   !lastFields[i].replaceAll(".*\\+ *","").replaceFirst("^[BI]-","").replaceFirst("\\+.*","").equals(iobesBody.replaceFirst("\\+.*",""))) {
 									report.add(file+", line "+linenr+": IOBES ERROR in column "+i+": IOBES expression \""+fields[i]+"\" does not continue \""+lastFields[i]+"\"");
 									errors++;
 								}
