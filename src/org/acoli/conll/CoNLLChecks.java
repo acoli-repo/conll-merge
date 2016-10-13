@@ -111,7 +111,7 @@ public class CoNLLChecks {
 										report.add(file+", line "+linenr+": IOBES ERROR in column "+i+": IOBES expression \""+fields[i]+"\" does not continue \""+lastFields[i]+"\"");
 										errors++;
 									}
-								if(iobesPfx.matches("^[EI]") && !lastFields[i].matches("^[BI]-"+iobesBody+"$")) {
+								if(iobesPfx.matches("^[EI]") && !lastFields[i].replaceFirst("^[BI]-","").equals(iobesBody)) {
 									report.add(file+", line "+linenr+": IOBES ERROR in column "+i+": IOBES expression \""+fields[i]+"\" does not continue \""+lastFields[i]+"\"");
 									errors++;
 								}

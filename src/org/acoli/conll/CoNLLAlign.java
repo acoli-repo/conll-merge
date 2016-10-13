@@ -122,12 +122,12 @@ public class CoNLLAlign {
 				
 				List<Delta> cDeltas = DiffUtils.diff(chars1, chars2).getDeltas();	// (2) aggregate into maximal common subtokens
 
-				// left.add(new String[] { "# "+chars1 });					// DEBUG
-				// right.add(new String[] {chars2.toString()});
-				// left.add(new String[] { "# "+chars2conll1 });
-				// right.add(new String[] {chars2conll2.toString()});				
-				// left.add(new String[]{ "# cDeltas: "+cDeltas.toString() });
-				// right.add(null);
+				left.add(new String[] { "# "+chars1 });					// DEBUG
+				right.add(new String[] {chars2.toString()});
+				left.add(new String[] { "# "+chars2conll1 });
+				right.add(new String[] {chars2conll2.toString()});				
+				left.add(new String[]{ "# cDeltas: "+cDeltas.toString() });
+				right.add(null);
 				
 				int ci=0;
 				int cj=0;
@@ -145,15 +145,14 @@ public class CoNLLAlign {
 							if(right.get(right.size()-1).length>col2) right.get(right.size()-1)[col2]=right.get(right.size()-1)[col2]+chars2.get(cj++);
 							
 							// IOBE(S)
-							if(ci==chars2conll1.size()-1) 
+							if(ci==chars2conll1.size() && cj==chars2conll2.size()) {
 								for(int f = 0; f<left.get(left.size()-1).length; f++)
 									if(f!=col1)
-										left.get(left.size()-1)[f]=left.get(left.size()-1)[f].replaceFirst("^B-","").replaceFirst("^I-","E-");
-							if(cj==chars2conll2.size()-1) 
+										left.get(left.size()-1)[f]=left.get(left.size()-1)[f].replaceFirst("^B-","B1-").replaceFirst("^I-","E-");
 								for(int f = 0; f<right.get(right.size()-1).length; f++)
 									if(f!=col2)
-										right.get(right.size()-1)[f]=right.get(right.size()-1)[f].replaceFirst("^B-","").replaceFirst("^I-","E-");
-
+										right.get(right.size()-1)[f]=right.get(right.size()-1)[f].replaceFirst("^B-","B2-").replaceFirst("^I-","E-");
+							}
 						} else { // new subtoken
 							left.add(Arrays.copyOf(conll1.get(chars2conll1.get(ci)),conll1.get(chars2conll1.get(ci)).length));
 							if(left.get(left.size()-1).length>col1) left.get(left.size()-1)[col1]=chars1.get(ci);
@@ -164,28 +163,28 @@ public class CoNLLAlign {
 							String iobes="I-";
 							if(ci==0 || !chars2conll1.get(ci).equals(chars2conll1.get(ci-1)))
 								iobes="B-";
-							if(ci==chars2conll1.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","");
+							if(ci==chars2conll1.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","B3-");
 							for(int f = 0; f<left.get(left.size()-1).length; f++)
 								if(f!=col1)
 									left.get(left.size()-1)[f]=(iobes+left.get(left.size()-1)[f]);							
 							if(ci>0 && !chars2conll1.get(ci).equals(chars2conll1.get(ci-1)) && left.size()>2 && left.get(left.size()-2)!=null) {
 								for(int f = 0; f<left.get(left.size()-2).length; f++)
 									if(f!=col1)
-										left.get(left.size()-2)[f]=left.get(left.size()-2)[f].replaceFirst("^B-","").replaceFirst("^I-","E-");
+										left.get(left.size()-2)[f]=left.get(left.size()-2)[f].replaceFirst("^B-","B4-").replaceFirst("^I-","E-");
 							}
 
 							// IOBE(S) right
 							iobes="I-";
 							if(cj==0 || !chars2conll2.get(cj).equals(chars2conll2.get(cj-1)))
 								iobes="B-";
-							if(cj==chars2conll2.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","");
+							if(cj==chars2conll2.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","B5-");
 							for(int f = 0; f<right.get(right.size()-1).length; f++)
 								if(f!=col2)
 									right.get(right.size()-1)[f]=(iobes+right.get(right.size()-1)[f]);							
 							if(cj>0 && !chars2conll2.get(cj).equals(chars2conll2.get(cj-1)) && right.size()>2 && right.get(right.size()-2)!=null) {
 								for(int f = 0; f<right.get(right.size()-2).length; f++)
 									if(f!=col2)
-										right.get(right.size()-2)[f]=right.get(right.size()-2)[f].replaceFirst("^B-","").replaceFirst("^I-","E-");
+										right.get(right.size()-2)[f]=right.get(right.size()-2)[f].replaceFirst("^B-","B6-").replaceFirst("^I-","E-");
 							}
 							
 							ci++;
@@ -198,15 +197,14 @@ public class CoNLLAlign {
 							right.get(right.size()-1)[col2]=right.get(right.size()-1)[col2]+chars2.get(cj);
 							
 							// IOBE(S)
-							if(ci==chars2conll1.size()-1) 
+							if(ci==chars2conll1.size() && cj==chars2conll2.size()) {
 								for(int f = 0; f<left.get(left.size()-1).length; f++)
 									if(f!=col1)
-										left.get(left.size()-1)[f]=left.get(left.size()-1)[f].replaceFirst("^B-","").replaceFirst("^I-","E-");
-							if(cj==chars2conll2.size()-1) 
+										left.get(left.size()-1)[f]=left.get(left.size()-1)[f].replaceFirst("^B-","B7-").replaceFirst("^I-","E-");
 								for(int f = 0; f<right.get(right.size()-1).length; f++)
 									if(f!=col2)
-										right.get(right.size()-1)[f]=right.get(right.size()-1)[f].replaceFirst("^B-","").replaceFirst("^I-","E-");
-									
+										right.get(right.size()-1)[f]=right.get(right.size()-1)[f].replaceFirst("^B-","B8-").replaceFirst("^I-","E-");
+							}									
 							ci++;
 							cj++;
 						} else { // new subtoken
@@ -219,28 +217,28 @@ public class CoNLLAlign {
 							String iobes="I-";
 							if(ci==0 || !chars2conll1.get(ci).equals(chars2conll1.get(ci-1)))
 								iobes="B-";
-							if(ci==chars2conll1.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","");
+							if(ci==chars2conll1.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","B9-");
 							for(int f = 0; f<left.get(left.size()-1).length; f++)
 								if(f!=col1)
 									left.get(left.size()-1)[f]=(iobes+left.get(left.size()-1)[f]);							
 							if(ci>0 && !chars2conll1.get(ci).equals(chars2conll1.get(ci-1)) && left.size()>2 && left.get(left.size()-2)!=null) {
 								for(int f = 0; f<left.get(left.size()-2).length; f++)
 									if(f!=col1)
-										left.get(left.size()-2)[f]=left.get(left.size()-2)[f].replaceFirst("^B-","").replaceFirst("^I-","E-");
+										left.get(left.size()-2)[f]=left.get(left.size()-2)[f].replaceFirst("^B-","B10-").replaceFirst("^I-","E-");
 							}
 
 							// IOBE(S) right
 							iobes="I-";
 							if(cj==0 || !chars2conll2.get(cj).equals(chars2conll2.get(cj-1)))
 								iobes="B-";
-							if(cj==chars2conll2.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","");
+							if(cj==chars2conll2.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","B11-");
 							for(int f = 0; f<right.get(right.size()-1).length; f++)
 								if(f!=col2)
 									right.get(right.size()-1)[f]=(iobes+right.get(right.size()-1)[f]);							
 							if(cj>0 && !chars2conll2.get(cj).equals(chars2conll2.get(cj-1)) && right.size()>2 && right.get(right.size()-2)!=null) {
 								for(int f = 0; f<right.get(right.size()-2).length; f++)
 									if(f!=col2)
-										right.get(right.size()-2)[f]=right.get(right.size()-2)[f].replaceFirst("^B-","").replaceFirst("^I-","E-");
+										right.get(right.size()-2)[f]=right.get(right.size()-2)[f].replaceFirst("^B-","B12-").replaceFirst("^I-","E-");
 							}							
 
 							ci++;
@@ -257,7 +255,7 @@ public class CoNLLAlign {
 								if(ci==chars2conll1.size()-1) 
 									for(int f = 0; f<left.get(left.size()-1).length; f++)
 										if(f!=col1)
-											left.get(left.size()-1)[f]=left.get(left.size()-1)[f].replaceFirst("^B-","").replaceFirst("^I-","E-");
+											left.get(left.size()-1)[f]=left.get(left.size()-1)[f].replaceFirst("^B-","B13-").replaceFirst("^I-","E-");
 							
 								ci++;									
 							} else {																	// create new stok
@@ -273,14 +271,14 @@ public class CoNLLAlign {
 								String iobes="I-";
 								if(ci==0 || !chars2conll1.get(ci).equals(chars2conll1.get(ci-1)))
 									iobes="B-";
-								if(ci==chars2conll1.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","");
+								if(ci==chars2conll1.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","B14-");
 								for(int f = 0; f<left.get(left.size()-1).length; f++)
 									if(f!=col1)
 										left.get(left.size()-1)[f]=(iobes+left.get(left.size()-1)[f]);							
 								if(ci>0 && !chars2conll1.get(ci).equals(chars2conll1.get(ci-1)) && left.size()>2 && left.get(left.size()-2)!=null) {
 									for(int f = 0; f<left.get(left.size()-2).length; f++)
 										if(f!=col1)
-											left.get(left.size()-2)[f]=left.get(left.size()-2)[f].replaceFirst("^B-","").replaceFirst("^I-","E-");
+											left.get(left.size()-2)[f]=left.get(left.size()-2)[f].replaceFirst("^B-","B15-").replaceFirst("^I-","E-");
 								}
 								
 								ci++;
@@ -296,7 +294,7 @@ public class CoNLLAlign {
 								if(cj==chars2conll2.size()-1) 
 									for(int f = 0; f<right.get(right.size()-1).length; f++)
 										if(f!=col2)
-											right.get(right.size()-1)[f]=right.get(right.size()-1)[f].replaceFirst("^B-","").replaceFirst("^I-","E-");
+											right.get(right.size()-1)[f]=right.get(right.size()-1)[f].replaceFirst("^B-","B16-").replaceFirst("^I-","E-");
 
 								cj++;
 								
@@ -313,14 +311,14 @@ public class CoNLLAlign {
 								String iobes="I-";
 								if(cj==0 || !chars2conll2.get(cj).equals(chars2conll2.get(cj-1)))
 									iobes="B-";
-								if(cj==chars2conll2.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","");
+								if(cj==chars2conll2.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","B17-");
 								for(int f = 0; f<right.get(right.size()-1).length; f++)
 									if(f!=col2)
 										right.get(right.size()-1)[f]=(iobes+right.get(right.size()-1)[f]);							
 								if(cj>0 && !chars2conll2.get(cj).equals(chars2conll2.get(cj-1)) && right.size()>2 && right.get(right.size()-2)!=null) {
 									for(int f = 0; f<right.get(right.size()-2).length; f++)
 										if(f!=col2)
-											right.get(right.size()-2)[f]=right.get(right.size()-2)[f].replaceFirst("^B-","").replaceFirst("^I-","E-");
+											right.get(right.size()-2)[f]=right.get(right.size()-2)[f].replaceFirst("^B-","B18-").replaceFirst("^I-","E-");
 								}
 								
 								cj++;
@@ -333,11 +331,55 @@ public class CoNLLAlign {
 			
 			// write left and right if at sentence break or at end
 			if(i>=conll1.size() || j>=conll2.size() || (forms1.get(i).trim().equals("") && forms2.get(j).trim().equals(""))) {
+				
+				left=undoIOBES4syntax(left);
+				right=undoIOBES4syntax(right);
+				
 				write(left,right,dropCols,out);
 				left.clear();
 				right.clear();
 			}
 		}
+	}
+
+	/** helper routine for split(): 
+		undo IOBES prefixing for syntax (i.e., annotations with non-balanced parentheses)
+		to make sure that parentheses match <br/>
+		also, we remove IOBES marking for _
+	*/ 
+	private List<String[]> undoIOBES4syntax(List<String[]> lines) {
+		for(int i = 0; i<lines.size(); i++)
+			if(lines.get(i)!=null && lines.get(i).length>0 && !lines.get(i)[0].trim().startsWith("#"))
+				for(int j = 0; j<lines.get(i).length; j++) {
+					String anno = lines.get(i)[j];
+					int leftPar = anno.replaceAll("[^\\(]","").length();
+					int rightPar = anno.replaceAll("[^\\)]","").length();
+					if(leftPar!=rightPar || anno.matches("^[IOBES]-[\\?_]$")) { // possible for syntax => we remove IOBES, note that we keep it for matching sequences
+						if(anno.startsWith("B-")) {
+							anno=anno.substring(2);
+							if(anno.contains("*")) {
+								anno=anno.replaceFirst("\\*.*","*");
+							} else if(anno.contains(")")) {
+								anno=anno.replaceFirst("\\).*","").replaceFirst("^$","_");
+							} else anno=anno;
+						} else if(anno.startsWith("I-")) {
+							if(anno.contains("*"))
+								anno="*";
+							else anno="_";
+						} else if(anno.startsWith("E-")) {
+							anno=anno.substring(2);
+							if(anno.contains("*"))
+								anno=anno.replaceFirst("^[^\\*]*\\*","\\*");
+							else if(anno.contains(")")) {
+								anno=anno.replaceFirst("^[^\\)]*\\)","\\)").replaceFirst("^$","_");
+							} else	anno="_";
+						}
+						else if(anno.startsWith("S-"))
+							anno=anno.substring(2);
+						lines.get(i)[j]=anno;
+					}
+				}
+		return lines;
 	}
 
 	/** internally called by split() and merge() <br/>
@@ -370,7 +412,7 @@ public class CoNLLAlign {
 										if(col==col1 && right.get(line)!=null && right.get(line).length>col2)
 											out.write("*RETOK*-"+right.get(line)[col2]); 
 										else if(lastValue!=null && lastValue.matches("^[BI]-.*") && nextValue!=null && 
-										   nextValue.matches("^[IE]"+lastValue.replaceFirst("^.",""))) {
+										   nextValue.substring(0,1).matches("^[IE]") && nextValue.substring(1).equals(lastValue.replaceFirst("^.",""))) {
 											out.write("I"+lastValue.replaceFirst("^.",""));								// IOBES inference/repair
 										} else {
 											out.write("?");								// default (no IOBES inference)
@@ -404,7 +446,7 @@ public class CoNLLAlign {
 									for(int a = line+1; a<right.size() && nextValue==null; a++)
 										if(right.get(a)!=null && right.get(a).length>col) nextValue=right.get(a)[col];										
 									if(lastValue!=null && lastValue.matches("^[BI]-.*") && nextValue!=null && 
-									   nextValue.matches("^[IE]"+lastValue.replaceFirst("^.",""))) {
+									   nextValue.substring(0,1).matches("^[IE]") && nextValue.substring(1).equals(lastValue.replaceFirst("^.",""))) {
 										out.write("I"+lastValue.replaceFirst("^.",""));									// IOBES inference/repair
 									} else {
 										out.write("?");									// default (no IOBES inference)
@@ -422,12 +464,17 @@ public class CoNLLAlign {
 	
 	/** simplify IOBES annotations in merged lines produced by prune() */
 	protected static String simplifyIOBES(String line) {
-		while(line.matches(".*\t[IB]-([^+]*)\\+I-\\1.*"))
-			line=line.replaceAll("\t([IB)-([^+]*)\\+I-\\2","\t$1-$2");
-		while(line.matches(".*\tB-([^+]*)\\+E-\\1.*"))
-			line=line.replaceAll("\tB-([^+]*)\\+E-\\1","\t$1");
-		while(line.matches(".*\tI-([^+]*)\\+E-\\1.*"))
-			line=line.replaceAll("\tI-([^+]*)\\+E-\\1","\tE-$1");
+		try {
+			while(line.matches(".*\t[IB]-([^+]*)\\+I-\\1.*"))
+				line=line.replaceAll("\t([IB])-([^+]*)\\+I-\\2","\t$1-$2");
+			while(line.matches(".*\tB-([^+]*)\\+E-\\1.*"))
+				line=line.replaceAll("\tB-([^+]*)\\+E-\\1","\t$1");
+			while(line.matches(".*\tI-([^+]*)\\+E-\\1.*"))
+				line=line.replaceAll("\tI-([^+]*)\\+E-\\1","\tE-$1");
+		} catch (java.util.regex.PatternSyntaxException e) {
+			e.printStackTrace();
+			System.err.println("while processing \""+line+"\"");
+		}
 		return line;
 	}
 	
