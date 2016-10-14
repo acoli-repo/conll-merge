@@ -62,10 +62,10 @@ public class CoNLLAlign {
 			Delta delta = null;
 			if(d<deltas.size()) delta = deltas.get(d);
 			
-			if(delta!=null && delta.getOriginal().getPosition()==i) { 		// debug
-				left.add(new String[] { "# "+delta });
-				right.add(null);
-			}
+			// if(delta!=null && delta.getOriginal().getPosition()==i) { 		// DEBUG
+				// left.add(new String[] { "# "+delta });
+				// right.add(null);
+			// }
 
 			if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && conll1.get(i).length==1 && conll1.get(i)[0].trim().equals("") && delta.getType().equals(Delta.TYPE.CHANGE)) {
 				// left.add(new String[] { "# override empty line replacement"});
@@ -122,12 +122,12 @@ public class CoNLLAlign {
 				
 				List<Delta> cDeltas = DiffUtils.diff(chars1, chars2).getDeltas();	// (2) aggregate into maximal common subtokens
 
-				left.add(new String[] { "# "+chars1 });					// DEBUG
-				right.add(new String[] {chars2.toString()});
-				left.add(new String[] { "# "+chars2conll1 });
-				right.add(new String[] {chars2conll2.toString()});				
-				left.add(new String[]{ "# cDeltas: "+cDeltas.toString() });
-				right.add(null);
+				// left.add(new String[] { "# "+chars1 });					// DEBUG
+				// right.add(new String[] {chars2.toString()});
+				// left.add(new String[] { "# "+chars2conll1 });
+				// right.add(new String[] {chars2conll2.toString()});				
+				// left.add(new String[]{ "# cDeltas: "+cDeltas.toString() });
+				// right.add(null);
 				
 				int ci=0;
 				int cj=0;
@@ -145,7 +145,7 @@ public class CoNLLAlign {
 							if(right.get(right.size()-1).length>col2) right.get(right.size()-1)[col2]=right.get(right.size()-1)[col2]+chars2.get(cj++);
 							
 							// IOBE(S)
-							if(ci==chars2conll1.size() && cj==chars2conll2.size()) {
+							if(ci>=chars2conll1.size()-1 && cj>=chars2conll2.size()-1) {
 								for(int f = 0; f<left.get(left.size()-1).length; f++)
 									if(f!=col1)
 										left.get(left.size()-1)[f]=left.get(left.size()-1)[f].replaceFirst("^B-","S-").replaceFirst("^I-","E-");
@@ -345,16 +345,28 @@ public class CoNLLAlign {
 	/** helper routine for split(): 
 		undo IOBES prefixing for syntax (i.e., annotations with non-balanced parentheses)
 		to make sure that parentheses match <br/>
-		also, we remove IOBES marking for _
+		also, we remove IOBES marking for _<br/>
+		
+		IOBES fixing routine
 	*/ 
 	private List<String[]> undoIOBES4syntax(List<String[]> lines) {
 		for(int i = 0; i<lines.size(); i++)
 			if(lines.get(i)!=null && lines.get(i).length>0 && !lines.get(i)[0].trim().startsWith("#"))
 				for(int j = 0; j<lines.get(i).length; j++) {
 					String anno = lines.get(i)[j];
+					
 					int leftPar = anno.replaceAll("[^\\(]","").length();
 					int rightPar = anno.replaceAll("[^\\)]","").length();
 					if(leftPar!=rightPar || anno.matches("^[IOBES]-[\\?_]$")) { // possible for syntax => we remove IOBES, note that we keep it for matching sequences
+
+						String nextAnno = null;		// fix IOBES (we don't generally apply this fix, might interfere with nested IOBES annotations)
+						for(int k = i+1;k<lines.size() && nextAnno==null; k++)
+							if(lines.get(k)!=null && lines.get(k).length>j && !lines.get(k)[j].equals("?") && !lines.get(k)[j].equals(""))
+								nextAnno = lines.get(k)[j];
+						
+						if(anno.startsWith("B-") && !nextAnno.matches("^[IE]-.*")) anno=anno.replaceFirst("B","S");
+						if(anno.startsWith("I-") && !nextAnno.matches("^[IE]-.*")) anno=anno.replaceFirst("I","E");
+					
 						if(anno.startsWith("B-")) {
 							anno=anno.substring(2);
 							if(anno.contains("*")) {
@@ -372,6 +384,8 @@ public class CoNLLAlign {
 						}
 						else if(anno.startsWith("S-"))
 							anno=anno.substring(2);
+
+						// lines.get(i)[j]=lines.get(i)[j]+" (before "+nextAnno+") > "+anno; // DEBUG
 						lines.get(i)[j]=anno;
 					}
 				}
@@ -566,7 +580,7 @@ public class CoNLLAlign {
 			Delta delta = null;
 			if(d<deltas.size()) delta = deltas.get(d);
 			
-			// if(delta!=null && delta.getOriginal().getPosition()==i) { 		// debug
+			// if(delta!=null && delta.getOriginal().getPosition()==i) { 		// DEBUG
 				// left.add(new String[] { "# "+delta });
 				// right.add(null);
 			// }
