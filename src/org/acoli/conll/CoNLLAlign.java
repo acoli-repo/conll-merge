@@ -417,12 +417,18 @@ public class CoNLLAlign {
 					if(leftPar!=rightPar || anno.matches("^[IOBES]-[\\?_]$")) { // possible for syntax => we remove IOBES, note that we keep it for matching sequences
 
 						String nextAnno = null;		// fix IOBES (we don't generally apply this fix, might interfere with nested IOBES annotations)
+						String lastAnno = null;
 						for(int k = i+1;k<lines.size() && nextAnno==null; k++)
 							if(lines.get(k)!=null && lines.get(k).length>j && !lines.get(k)[j].equals("?") && !lines.get(k)[j].equals(""))
-								nextAnno = lines.get(k)[j];
-						
-						if(anno.startsWith("B-") && !nextAnno.matches("^[IE]-.*")) anno=anno.replaceFirst("B","S");
-						if(anno.startsWith("I-") && !nextAnno.matches("^[IE]-.*")) anno=anno.replaceFirst("I","E");
+								nextAnno = lines.get(k)[j];							
+						for(int k = i-1;k>=0 && lastAnno==null; k--)
+							if(lines.get(k)!=null && lines.get(k).length>j && !lines.get(k)[j].equals("?") && !lines.get(k)[j].equals(""))
+								lastAnno = lines.get(k)[j];							
+
+						if(anno.startsWith("B-") && lastAnno!=null && lastAnno.equals(anno)) anno=anno.replaceFirst("B-","I-");
+						if(anno.startsWith("B-") && (nextAnno==null || !nextAnno.matches("^[IE]-.*"))) anno=anno.replaceFirst("B","S");
+						if(anno.startsWith("I-") && (nextAnno==null || !nextAnno.matches("^[IE]-.*"))) anno=anno.replaceFirst("I","E");
+						if(anno.startsWith("E-") && nextAnno!=null && nextAnno.equals(anno)) anno=anno.replaceFirst("E-","I-");
 					
 						if(anno.startsWith("B-")) {
 							anno=anno.substring(2);
@@ -442,7 +448,7 @@ public class CoNLLAlign {
 						else if(anno.startsWith("S-"))
 							anno=anno.substring(2);
 
-						// lines.get(i)[j]=lines.get(i)[j]+" (before "+nextAnno+") > "+anno; // DEBUG
+						// lines.get(i)[j]="("+lines.get(i)[j]+" after "+lastAnno+" before "+nextAnno+" >) "+anno; // DEBUG
 						lines.get(i)[j]=anno;
 					}
 				}
