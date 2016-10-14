@@ -335,11 +335,68 @@ public class CoNLLAlign {
 				left=undoIOBES4syntax(left);
 				right=undoIOBES4syntax(right);
 				
+				left=repairIOBES(left);
+				right=repairIOBES(right);
+				
 				write(left,right,dropCols,out);
 				left.clear();
 				right.clear();
 			}
 		}
+	}
+	
+	/** helper routine for split():
+		(1) undo nested IOBES (may be lossy)
+		(2) enforce IOBES validity (proper opening and closing)
+		side-effect: converts IOB to IOBES <br/>
+		may duplicate annotations, hence apply after undoIOBES4syntax() <br/>
+		note that this routine may corrupt annotations if they contain I-,O-,B-,E-,S- as part of the annotation */
+	private List<String[]> repairIOBES(List<String[]> lines) {
+		// (1) undo nested IOBES
+		for(int i = 0; i<lines.size(); i++) 
+			if(lines.get(i)!=null && lines.get(i).length>0 && !lines.get(i)[0].trim().startsWith("#"))
+				for(int j = 0; j<lines.get(i).length; j++) {
+					String anno = lines.get(i)[j];
+					while(anno.matches("^[IOBES]-[IOBES]-.*")) 
+						anno=anno.replaceFirst("^[IOBES]-I-","I-")
+								 .replaceFirst("^[IOBES]-O-","O-")
+								 .replaceFirst("^I-S-","I-")
+								 .replaceFirst("^B-S-","B-")
+								 .replaceFirst("^E-S-","E-")
+								 .replaceFirst("^S-S-","S-")
+								 .replaceFirst("^[SB]-B-","B-")
+								 .replaceFirst("^[IOE]-B-","I-")
+								 .replaceFirst("^[ES]-E-","E-")
+								 .replaceFirst("^[IOB]-E-","I-");
+					anno=anno.replaceFirst("^[IOBES]-\\*$","*")
+							 .replaceFirst("^[IOBES]-_","_");
+					lines.get(i)[j]=anno;
+				}
+				
+		// (2) enforce IOBES validity
+		for(int i = 0; i<lines.size(); i++) 
+			if(lines.get(i)!=null && lines.get(i).length>0 && !lines.get(i)[0].trim().startsWith("#"))
+				for(int j = 0; j<lines.get(i).length; j++) {
+					String anno = lines.get(i)[j];
+					String nextAnno = null;
+					for(int k = i+1;k<lines.size() && nextAnno==null; k++)
+						if(lines.get(k)!=null && lines.get(k).length>j && !lines.get(k)[j].equals("?") && !lines.get(k)[j].equals(""))
+							nextAnno = lines.get(k)[j];
+					String lastAnno = null;
+					for(int k = i-1;k>=0 && lastAnno==null; k++)
+						if(lines.get(k)!=null && lines.get(k).length>j && !lines.get(k)[j].equals("?") && !lines.get(k)[j].equals(""))
+							lastAnno = lines.get(k)[j];
+					if(anno.matches("^[IOBES]-.+")) {
+						String iobesBody = anno.substring(2);
+						if(lastAnno==null || !lastAnno.replaceFirst("^[BI]-","").equals(iobesBody))
+							anno=anno.replaceFirst("^I-","B-").replaceFirst("^E-","S-");
+						if(nextAnno==null || !nextAnno.replaceFirst("^[EI]-","").equals(iobesBody))
+							anno=anno.replaceFirst("^I-","E-").replaceFirst("^B-","S-");
+					}
+					lines.get(i)[j]=anno;
+				}
+		
+		return lines;
 	}
 
 	/** helper routine for split(): 
