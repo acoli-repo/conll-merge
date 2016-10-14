@@ -62,11 +62,11 @@ public class CoNLLAlign {
 			Delta delta = null;
 			if(d<deltas.size()) delta = deltas.get(d);
 			
-			// if(delta!=null && delta.getOriginal().getPosition()==i) { 		// debug
-				// left.add(new String[] { "# "+delta });
-				// right.add(null);
-			// }
-																				// override empty line replacements
+			if(delta!=null && delta.getOriginal().getPosition()==i) { 		// debug
+				left.add(new String[] { "# "+delta });
+				right.add(null);
+			}
+
 			if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && conll1.get(i).length==1 && conll1.get(i)[0].trim().equals("") && delta.getType().equals(Delta.TYPE.CHANGE)) {
 				// left.add(new String[] { "# override empty line replacement"});
 				// right.add(null);
@@ -359,8 +359,6 @@ public class CoNLLAlign {
 							anno=anno.substring(2);
 							if(anno.contains("*")) {
 								anno=anno.replaceFirst("\\*.*","*");
-							} else if(anno.contains(")")) {
-								anno=anno.replaceFirst("\\).*","").replaceFirst("^$","_");
 							} else anno=anno;
 						} else if(anno.startsWith("I-")) {
 							if(anno.contains("*"))
@@ -370,9 +368,7 @@ public class CoNLLAlign {
 							anno=anno.substring(2);
 							if(anno.contains("*"))
 								anno=anno.replaceFirst("^[^\\*]*\\*","\\*");
-							else if(anno.contains(")")) {
-								anno=anno.replaceFirst("^[^\\)]*\\)","\\)").replaceFirst("^$","_");
-							} else	anno="_";
+							else anno="_";
 						}
 						else if(anno.startsWith("S-"))
 							anno=anno.substring(2);
@@ -383,16 +379,28 @@ public class CoNLLAlign {
 	}
 
 	/** internally called by split() and merge() <br/>
-	    note that rather than filling up null lines with ?, it also attempts to restore IOBES annotations
+	    note that in addition to filling up null lines with ?, it also attempts to restore IOBES annotations
 	*/
 	private void write(List<String[]> left, List<String[]> right, Set<Integer> dropCols, Writer out) throws IOException {
 				int leftLength = 0;  for(String[] l : left)  if(l!=null && l.length>leftLength)  leftLength=l.length;
 				int rightLength = 0; for(String[] l : right) if(l!=null && l.length>rightLength) rightLength=l.length;
+				
+				
 				for(int line = 0; line<left.size(); line++) {
-										
+					
+					// DEBUG
+					// out.write("# ");
+					// if(left.get(line)==null) out.write("null"); else out.write(Arrays.asList(left.get(line)).toString());
+					// out.write(" and ");
+					// if(right.get(line)==null) out.write("null"); else out.write(Arrays.asList(right.get(line)).toString());
+					// out.write("\n");
+					
 					// keep empty lines if one on the left
-					if((left.get(line)!=null && left.get(line).length==1 && left.get(line)[0].trim().equals("")) && (right.get(line)==null || (right.get(line).length==1 && right.get(line)[0].trim().equals("")))) {
+					if((( left.get(line)!=null && (left.get(line).length==0 || left.get(line).length==1 && left.get(line)[0].trim().equals("")) )) && (right.get(line)==null || right.get(line).length==0 || (right.get(line).length==1 && right.get(line)[0].trim().equals("")))) {
 						out.write("\n");
+					} else if((( left.get(line)!=null && (left.get(line).length==0 || left.get(line).length==1 && left.get(line)[0].trim().equals("")) )) && ((right.get(line).length==1 && col2==0 && !right.get(line)[0].trim().equals("")))) {
+						out.write("\n");
+						out.write("# "+right.get(line)[0]+"\n");		// this is a misalignment, keep original token as comment
 					} else if(left.get(line)==null && right.get(line).length==1 && right.get(line)[0].trim().equals("")) {
 						// nothing (insertions of empty lines from the right)
 					} else {
@@ -558,11 +566,11 @@ public class CoNLLAlign {
 			Delta delta = null;
 			if(d<deltas.size()) delta = deltas.get(d);
 			
-			// if(delta!=null && delta.getOriginal().getPosition()==i) { 		
-				// left.add(new String[] { "# "+delta });						// debug
-				// right.add(null);				
+			// if(delta!=null && delta.getOriginal().getPosition()==i) { 		// debug
+				// left.add(new String[] { "# "+delta });
+				// right.add(null);
 			// }
-			
+
 			if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && conll1.get(i).length==1 && conll1.get(i)[0].trim().equals("") && delta.getType().equals(Delta.TYPE.CHANGE)) {
 				// left.add(new String[] { "# override empty line replacement"});
 				// right.add(null);
@@ -586,11 +594,9 @@ public class CoNLLAlign {
 			} else if(delta==null || delta.getOriginal().getPosition()>i) {					// no change
 				left.add(conll1.get(i++));
 				right.add(conll2.get(j++));
-				// out.write(Arrays.asList(conll1.get(i++))+"\t|\t"+Arrays.asList(conll2.get(j++))+"\n");
 			} else if (delta.getOriginal().size()*delta.getRevised().size()==1) { 		// 1:1 replacements
 				left.add(conll1.get(i++));
 				right.add(conll2.get(j++));
-				// out.write(Arrays.asList(conll1.get(i++))+"\t|\t"+Arrays.asList(conll2.get(j++))+"\n");
 				d++;
 			} else { 																	// n:m replacements
 				d++;
