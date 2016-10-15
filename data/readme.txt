@@ -13,8 +13,8 @@ build-and-test.ALL.sh
 	
 test.CoNLLAlign.sh
 	calls CoNLLAlign for pairwise merge of *all* files in conll/
-	with default options (no -f, no -split), no severe errors are reported by CoNLLChecks, except the ones listed below
-	-f and -split merges need to be evaluated
+	with default options and -split (no -f), no severe errors are reported by CoNLLChecks, except the ones listed below
+	-f merges still need to be evaluated
 
 	known error messages (not bugs ;)
 		CLOSE PAR ERROR / OPEN PAR ERROR for every merge where semantic roles (PropBank) precede RST
