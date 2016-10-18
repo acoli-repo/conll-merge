@@ -163,11 +163,13 @@ public class CoNLLAlign {
 			// write left and right if at sentence break or at end
 			if(i>=conll1.size() || j>=conll2.size() || (forms1.get(i).trim().equals("") && forms2.get(j).trim().equals(""))) {
 				
-				left=undoIOBES4syntax(left);
-				right=undoIOBES4syntax(right);
-				
-				left=repairIOBES(left);
-				right=repairIOBES(right);
+				if(split) {
+					left=undoIOBES4syntax(left);
+					right=undoIOBES4syntax(right);
+					
+					left=repairIOBES(left);
+					right=repairIOBES(right);
+				}
 				
 				write(left,right,dropCols,out);
 				left.clear();
@@ -680,77 +682,6 @@ public class CoNLLAlign {
 		out.flush();
 	}
 	
-	/** merge two CoNLL files and adopt the tokenization of the first<br/>
-		tokenization mismatches from the second are represented by "empty" PTB words prefixed with *RETOK*-... */
-	public void mergeOLD(Writer out, Set<Integer> dropCols) throws IOException {
-		int i = 0;
-		int j = 0;
-		int d = 0;
-
-		Vector<String[]> left = new Vector<String[]>();
-		Vector<String[]> right = new Vector<String[]>();
-		while(i<conll1.size() && j<conll2.size()) {
-
-			// build left and right
-			Delta delta = null;
-			if(d<deltas.size()) delta = deltas.get(d);
-			
-			if(delta!=null && delta.getOriginal().getPosition()==i) { 		// DEBUG
-				left.add(new String[] { "# "+delta });
-				right.add(null);
-			}
-
-			if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && conll1.get(i).length==1 && conll1.get(i)[0].trim().equals("") && delta.getType().equals(Delta.TYPE.CHANGE)) {
-				// left.add(new String[] { "# override empty line replacement"});
-				// right.add(null);
-				left.add(conll1.get(i++));
-				right.add(null);
-				for(int r = 0; r<delta.getRevised().size(); r++) {
-					left.add(null);
-					right.add(conll2.get(j++));
-				}
-				d++;
-			} else if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && conll1.get(i).length>0 && conll1.get(i)[0].trim().startsWith("#") && delta.getType().equals(Delta.TYPE.CHANGE)) {
-				// left.add(new String[] { "# override comment replacement"});
-				// right.add(null);
-				left.add(conll1.get(i++));
-				right.add(null);
-				for(int r = 0; r<delta.getRevised().size(); r++) {
-					left.add(null);
-					right.add(conll2.get(j++));
-				}
-				d++;
-			} else if(delta==null || delta.getOriginal().getPosition()>i) {					// no change
-				left.add(conll1.get(i++));
-				right.add(conll2.get(j++));
-			} else if (delta.getOriginal().size()*delta.getRevised().size()==1) { 		// 1:1 replacements
-				left.add(conll1.get(i++));
-				right.add(conll2.get(j++));
-				d++;
-			} else { 																	// n:m replacements
-				d++;
-				
-				for(int o=0; o<delta.getOriginal().size(); o++) {
-					left.add(conll1.get(i++));
-					right.add(null);
-					// out.write(">"+Arrays.asList(conll1.get(i++))+"\n");
-				}
-				for(int r = 0; r<delta.getRevised().size(); r++) {
-					left.add(null);
-					right.add(conll2.get(j++));
-					//out.write("<"+Arrays.asList(conll2.get(j++))+"\n");
-				}
-			}
-			
-			// write left and right if at sentence break or at end
-			if(i>=conll1.size() || j>=conll2.size() || (forms1.get(i).trim().equals("") && forms2.get(j).trim().equals(""))) {
-				write(left,right,dropCols, out);
-				left.clear();
-				right.clear();
-			}
-		}
-	}
-
 	public static void main(String[] argv) throws Exception {
 		System.err.println("synopsis: CoNLLAlign FILE1.tsv FILE2.tsv [COL1 COL2] [-f] [-split] [-drop none | -drop COLx..z]\n"+
 			"\tFILEi.tsv tab-separated text files, e.g. CoNLL format\n"+
