@@ -1,12 +1,14 @@
 #!/bin/bash
 PATH_SEPARATOR=':';
+FILES1=conll/*rst*conll;	# conll/*conll
+FILES2=conll/*pdtb*conll;	# conll/*conll
 if echo $OSTYPE | grep -i 'cygwin' >&/dev/null; then PATH_SEPARATOR=';'; fi;
 if 
 	javac -classpath ../src/$PATH_SEPARATOR../lib/diffutils-1.2.1.jar ../src/org/acoli/conll/CoNLLAlign.java;
 then
 		mkdir merge >& /dev/null;
-		for file1 in conll/*.conll; do
-			for file2 in conll/*.conll; do
+		for file1 in $FILES1; do
+			for file2 in $FILES2; do
 				if [ $file1 != $file2 ]; then
 					TGT=merge/`echo $file1 | sed s/'.*\/'//`_`echo $file2 | sed s/'.*\/'//`.merged.conll;
 					if [ -e $TGT ]; then echo found $TGT, skipping CoNLLAlign $file1 $file2 1>&2;

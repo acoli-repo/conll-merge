@@ -26,8 +26,8 @@ import difflib.*;
 */ 
 public class CoNLLAlign {
 
-	final private List<String[]> conll1;
-	final private List<String[]> conll2;
+	final private Vector<String[]> conll1;
+	final private Vector<String[]> conll2;
 	final private List<String> forms1;
 	final private List<String> forms2;
 	final private List<Delta> deltas;
@@ -44,28 +44,49 @@ public class CoNLLAlign {
 		forms2 = getCol(conll2,col2);		
 		deltas = DiffUtils.diff(forms1, forms2).getDeltas();		
 	}
+
+	/** shorthand for merge with token level alignment */	
+	public void merge(Writer out, Set<Integer> dropCols) throws IOException {
+		merge(out,dropCols, false);
+	}
 	
-	/** merge CoNLL files by splitting tokens into maximal common subtokens:
+	/** shorthand for merge with sub-token level alignment */
+	public void split(Writer out, Set<Integer> dropCols) throws IOException {
+		merge(out,dropCols, true);
+	}
+
+	
+	/** given two CoNLL files, perform token- or subtoken-level merge
+	
+		boolean split<br/>
+		<ul>
+		<li> if split=false, then merge two CoNLL files and adopt the tokenization of the first<br/>
+		tokenization mismatches from the second are represented by "empty" PTB words prefixed with *RETOK*-...
+		</li>
+		<li>
+		if split=true, then merge CoNLL files by splitting tokens into maximal common subtokens:
 	    instead of enforcing one tokenization over another, split both tokenizations to minimal common strings and add this as a new first column
 	    to the output<br/>
-		annotations are split according to IOBES (this may lead to nested IOBES prefixes that should be post-processed) */
-	public void split(Writer out, Set<Integer> dropCols) throws IOException {
+		annotations are split according to IOBES (this may lead to nested IOBES prefixes that should be post-processed)
+		</li>
+		</ul>		*/
+	public void merge(Writer out, Set<Integer> dropCols, boolean split) throws IOException {
 		int i = 0;
 		int j = 0;
 		int d = 0;
 
-		List<String[]> left = new Vector<String[]>();
-		List<String[]> right = new Vector<String[]>();
+		Vector<String[]> left = new Vector<String[]>();
+		Vector<String[]> right = new Vector<String[]>();
 		while(i<conll1.size() && j<conll2.size()) {
 
 			// build left and right
 			Delta delta = null;
 			if(d<deltas.size()) delta = deltas.get(d);
 			
-			// if(delta!=null && delta.getOriginal().getPosition()==i) { 		// DEBUG
-				// left.add(new String[] { "# "+delta });
-				// right.add(null);
-			// }
+			if(delta!=null && delta.getOriginal().getPosition()==i) { 		// DEBUG
+				left.add(new String[] { "# "+delta });
+				right.add(null);
+			}
 
 			if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && conll1.get(i).length==1 && conll1.get(i)[0].trim().equals("") && delta.getType().equals(Delta.TYPE.CHANGE)) {
 				// left.add(new String[] { "# override empty line replacement"});
@@ -95,39 +116,80 @@ public class CoNLLAlign {
 				right.add(conll2.get(j++));
 				d++;
 			} else { 																	// n:m replacements
-				d++;																	// (1) iterated character-level diff between chars1 and chars2
-				List<String> chars1 = new Vector<String>();
-				List<String> chars2 = new Vector<String>();
-				List<Integer> chars2conll1 = new Vector<Integer>();
-				List<Integer> chars2conll2 = new Vector<Integer>();
-				
-				// left.add(new String[] { "# "+delta});			// DEBUG
-				// right.add(null);
-				
-				for(int o=0; o<delta.getOriginal().size(); o++) {
-					for(String c : forms1.get(i).replaceAll("(.)","$1\t").trim().split("\t")) {
-						chars1.add(c);
-						chars2conll1.add(i);
+				d++;																	
+
+				if(!split) {															// (A) regular token-level merge
+					for(int o=0; o<delta.getOriginal().size(); o++) {
+						left.add(conll1.get(i++));
+						right.add(null);
+						// out.write(">"+Arrays.asList(conll1.get(i++))+"\n");
 					}
-					i++;
-				}
-				
-				for(int r = 0; r<delta.getRevised().size(); r++) {
-					for(String c : forms2.get(j).replaceAll("(.)","$1\t").trim().split("\t")) {
-						chars2.add(c);
-						chars2conll2.add(j);
+					for(int r = 0; r<delta.getRevised().size(); r++) {
+						left.add(null);
+						right.add(conll2.get(j++));
+						//out.write("<"+Arrays.asList(conll2.get(j++))+"\n");
 					}
-					j++;
+				} else  {																// (B) sub-token merge				
+					List<String> chars1 = new Vector<String>();								
+					List<String> chars2 = new Vector<String>();
+					List<Integer> chars2conll1 = new Vector<Integer>();
+					List<Integer> chars2conll2 = new Vector<Integer>();
+																							// prepare character-level diff between chars1 and chars2
+					left.add(new String[] { "# "+delta});			// DEBUG
+					right.add(null);
+					
+					for(int o=0; o<delta.getOriginal().size(); o++) {
+						for(String c : forms1.get(i).replaceAll("(.)","$1\t").trim().split("\t")) {
+							chars1.add(c);
+							chars2conll1.add(i);
+						}
+						i++;
+					}
+					
+					for(int r = 0; r<delta.getRevised().size(); r++) {
+						for(String c : forms2.get(j).replaceAll("(.)","$1\t").trim().split("\t")) {
+							chars2.add(c);
+							chars2conll2.add(j);
+						}
+						j++;
+					}
+
+					Vector<Vector<String[]>> updateLR = split(chars1,chars2,chars2conll1, chars2conll2);
+					left.addAll(updateLR.get(0));
+					right.addAll(updateLR.get(1));
 				}
+			}
+			
+			// write left and right if at sentence break or at end
+			if(i>=conll1.size() || j>=conll2.size() || (forms1.get(i).trim().equals("") && forms2.get(j).trim().equals(""))) {
 				
+				left=undoIOBES4syntax(left);
+				right=undoIOBES4syntax(right);
+				
+				left=repairIOBES(left);
+				right=repairIOBES(right);
+				
+				write(left,right,dropCols,out);
+				left.clear();
+				right.clear();
+			}
+		}
+	}
+
+				
+	/** to be called with a character-wise alignment, return update vectors for left and right in split */
+	protected Vector<Vector<String[]>> split(List<String> chars1, List<String> chars2, List<Integer> chars2conll1, List<Integer> chars2conll2) {
+				Vector<String[]> left = new Vector<String[]>();								// (1) initialized with character sequences => Diff
+				Vector<String[]> right = new Vector<String[]>();
+		
 				List<Delta> cDeltas = DiffUtils.diff(chars1, chars2).getDeltas();	// (2) aggregate into maximal common subtokens
 
-				// left.add(new String[] { "# "+chars1 });					// DEBUG
-				// right.add(new String[] {chars2.toString()});
-				// left.add(new String[] { "# "+chars2conll1 });
-				// right.add(new String[] {chars2conll2.toString()});				
-				// left.add(new String[]{ "# cDeltas: "+cDeltas.toString() });
-				// right.add(null);
+				left.add(new String[] { "# "+chars1 });					// DEBUG
+				right.add(new String[] {chars2.toString()});
+				left.add(new String[] { "# "+chars2conll1 });
+				right.add(new String[] {chars2conll2.toString()});				
+				left.add(new String[]{ "# cDeltas: "+cDeltas.toString() });
+				right.add(null);
 				
 				int ci=0;
 				int cj=0;
@@ -327,23 +389,13 @@ public class CoNLLAlign {
 						}
 					}
 				}
+				
+				Vector<Vector<String[]>> result = new Vector<Vector<String[]>>();
+				result.add(left);
+				result.add(right);
+				return result;
 			}
-			
-			// write left and right if at sentence break or at end
-			if(i>=conll1.size() || j>=conll2.size() || (forms1.get(i).trim().equals("") && forms2.get(j).trim().equals(""))) {
-				
-				left=undoIOBES4syntax(left);
-				right=undoIOBES4syntax(right);
-				
-				left=repairIOBES(left);
-				right=repairIOBES(right);
-				
-				write(left,right,dropCols,out);
-				left.clear();
-				right.clear();
-			}
-		}
-	}
+
 	
 	/** helper routine for split():
 		(1) undo nested IOBES (may be lossy)
@@ -351,7 +403,7 @@ public class CoNLLAlign {
 		side-effect: converts IOB to IOBES <br/>
 		may duplicate annotations, hence apply after undoIOBES4syntax() <br/>
 		note that this routine may corrupt annotations if they contain I-,O-,B-,E-,S- as part of the annotation */
-	private List<String[]> repairIOBES(List<String[]> lines) {
+	private Vector<String[]> repairIOBES(Vector<String[]> lines) {
 		// (1) undo nested IOBES
 		for(int i = 0; i<lines.size(); i++) 
 			if(lines.get(i)!=null && lines.get(i).length>0 && !lines.get(i)[0].trim().startsWith("#"))
@@ -406,7 +458,7 @@ public class CoNLLAlign {
 		
 		IOBES fixing routine
 	*/ 
-	private List<String[]> undoIOBES4syntax(List<String[]> lines) {
+	private Vector<String[]> undoIOBES4syntax(Vector<String[]> lines) {
 		for(int i = 0; i<lines.size(); i++)
 			if(lines.get(i)!=null && lines.get(i).length>0 && !lines.get(i)[0].trim().startsWith("#"))
 				for(int j = 0; j<lines.get(i).length; j++) {
@@ -458,7 +510,7 @@ public class CoNLLAlign {
 	/** internally called by split() and merge() <br/>
 	    note that in addition to filling up null lines with ?, it also attempts to restore IOBES annotations
 	*/
-	private void write(List<String[]> left, List<String[]> right, Set<Integer> dropCols, Writer out) throws IOException {
+	private void write(Vector<String[]> left, Vector<String[]> right, Set<Integer> dropCols, Writer out) throws IOException {
 				int leftLength = 0;  for(String[] l : left)  if(l!=null && l.length>leftLength)  leftLength=l.length;
 				int rightLength = 0; for(String[] l : right) if(l!=null && l.length>rightLength) rightLength=l.length;
 				
@@ -630,23 +682,23 @@ public class CoNLLAlign {
 	
 	/** merge two CoNLL files and adopt the tokenization of the first<br/>
 		tokenization mismatches from the second are represented by "empty" PTB words prefixed with *RETOK*-... */
-	public void merge(Writer out, Set<Integer> dropCols) throws IOException {
+	public void mergeOLD(Writer out, Set<Integer> dropCols) throws IOException {
 		int i = 0;
 		int j = 0;
 		int d = 0;
 
-		List<String[]> left = new Vector<String[]>();
-		List<String[]> right = new Vector<String[]>();
+		Vector<String[]> left = new Vector<String[]>();
+		Vector<String[]> right = new Vector<String[]>();
 		while(i<conll1.size() && j<conll2.size()) {
 
 			// build left and right
 			Delta delta = null;
 			if(d<deltas.size()) delta = deltas.get(d);
 			
-			// if(delta!=null && delta.getOriginal().getPosition()==i) { 		// DEBUG
-				// left.add(new String[] { "# "+delta });
-				// right.add(null);
-			// }
+			if(delta!=null && delta.getOriginal().getPosition()==i) { 		// DEBUG
+				left.add(new String[] { "# "+delta });
+				right.add(null);
+			}
 
 			if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && conll1.get(i).length==1 && conll1.get(i)[0].trim().equals("") && delta.getType().equals(Delta.TYPE.CHANGE)) {
 				// left.add(new String[] { "# override empty line replacement"});
@@ -677,6 +729,7 @@ public class CoNLLAlign {
 				d++;
 			} else { 																	// n:m replacements
 				d++;
+				
 				for(int o=0; o<delta.getOriginal().size(); o++) {
 					left.add(conll1.get(i++));
 					right.add(null);
@@ -746,8 +799,8 @@ public class CoNLLAlign {
 			me.merge(new OutputStreamWriter(System.out),dropCols);
 	}
 	
-	List<String[]> read(File file) throws IOException {
-		List<String[]> result = new ArrayList<String[]>();
+	Vector<String[]> read(File file) throws IOException {
+		Vector<String[]> result = new Vector<String[]>();
 		BufferedReader in = new BufferedReader(new FileReader(file));
 		for(String line=in.readLine(); line!=null; line=in.readLine()) {
 			if(line.trim().startsWith("#")) 
@@ -758,7 +811,7 @@ public class CoNLLAlign {
 		return result;
 	}
 	
-	List<String> getCol(List<String[]> conll, int col) {
+	List<String> getCol(Vector<String[]> conll, int col) {
 		List<String> result = new ArrayList<String>();
 		for(int i = 0; i<conll.size(); i++)
 			if(conll.get(i).length==0) result.add(""); else result.add(conll.get(i)[col]);
