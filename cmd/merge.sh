@@ -2,6 +2,7 @@
 echo 'iterated CoNLLAlign of multiple documents, write to stdout' 1>&2
 echo 'synopsis: '`echo $0 | sed s/'.*\/'//`' FILE1..n [CoNLLAlignFlags]' 1>&2;
 echo '  FILE1..n        CoNLL annotations of the same document'1>&2;
+echo '                  if FILE1 is --, read from stdin' 1>&2;
 echo '  CoNLLAlignFlags see CoNLLAlign for options (other than files)' 1>&2;
 
 ########
@@ -50,12 +51,17 @@ if [ $STATUS = 'ok' ]; then
 		TMP=$0.`ls $0*tmp |wc -l`.tmp;
 	done;
 	for file in $*; do
-		if [ -e $file ]; then
-			if [ ! -e $TMP ]; then 
+		if [ ! -e $TMP ]; then 
+			if [ -e $file ]; then
 				cp $file $TMP;
 				echo 1>&2;
 				echo add $file 1>&2;
-			fi;
+			else if [ $file='--' ]; then
+					echo 1>&2;
+					echo read stdin 1>&2;
+					cat > $TMP;
+				fi;
+			fi; 
 		fi;
 	done;
 	TMP2=$TMP.bak;
