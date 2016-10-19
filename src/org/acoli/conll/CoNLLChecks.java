@@ -85,8 +85,13 @@ public class CoNLLChecks {
 							if(s.equals("(")) openPars.get(i).push(linenr);
 							if(s.equals(")")) {
 								if(openPars.get(i).isEmpty()) {
-									report.add(file+", line "+linenr+": OPEN PAR ERROR in column "+i+": found no opening (");
-									errors++;
+									if(!fields[i].equals("*RETOK*-)")) {
+										report.add(file+", line "+linenr+": OPEN PAR ERROR in column "+i+": found no opening (");
+										errors++;
+									} else {
+										report.add(file+", line "+linenr+": OPEN PAR WARNING in column "+i+": found no opening (, possibly due to retokenization");
+										warnings++;
+									}
 								} else
 									openPars.get(i).pop();
 							}
