@@ -3,8 +3,8 @@ PATH_SEPARATOR=':';
 
 FILES1=conll/*conll;
 FILES2=conll/*conll;
-# FILES1=conll/*pdgb*conll;	# conll/*conll
-# FILES2=conll/*name*conll;	# conll/*conll
+# FILES1=conll/*pdtb*conll;	# conll/*conll
+# FILES2=conll/*rst*conll;	# conll/*conll
 
 if echo $OSTYPE | grep -i 'cygwin' >&/dev/null; then PATH_SEPARATOR=';'; fi;
 if 

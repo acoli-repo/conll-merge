@@ -154,18 +154,26 @@ public class CoNLLAlign {
 					}
 					
 					for(int o=0; o<delta.getOriginal().size(); o++) {
-						for(String c : forms1.get(i).replaceAll("(.)","$1\t").trim().split("\t")) {
-							chars1.add(c);
-							chars2conll1.add(i);
-						}
+						if(forms1.get(i).trim().startsWith("#")) {							// exclude comments
+							left.add(conll1.get(i));
+							right.add(null);						
+						} else
+							for(String c : forms1.get(i).replaceAll("(.)","$1\t").trim().split("\t")) {
+								chars1.add(c);
+								chars2conll1.add(i);
+							}
 						i++;
 					}
 					
 					for(int r = 0; r<delta.getRevised().size(); r++) {
-						for(String c : forms2.get(j).replaceAll("(.)","$1\t").trim().split("\t")) {
-							chars2.add(c);
-							chars2conll2.add(j);
-						}
+						if(forms2.get(j).trim().startsWith("#")) {
+							left.add(conll2.get(i));
+							right.add(null);
+						} else
+							for(String c : forms2.get(j).replaceAll("(.)","$1\t").trim().split("\t")) {
+								chars2.add(c);
+								chars2conll2.add(j);
+							}
 						j++;
 					}
 
@@ -669,9 +677,11 @@ public class CoNLLAlign {
 					} else {
 						for(int i = 0; i<last.length; i++) 
 							if(i!=col1 && i<fields.length) {
-								if(last[i].equals("?")) last[i]=fields[i].replaceFirst("\\*",fields[col1]);
+								if(fields[i].contains("*"))
+									fields[i]=fields[i].substring(0,fields[i].indexOf("*"))+fields[col1]+fields[i].substring(fields[i].indexOf("*")+1);
+								if(last[i].equals("?")) last[i]=fields[i];
 								else if(!fields[i].equals("?"))
-									last[i]= last[i]+"+"+fields[i].replaceFirst("\\*",fields[col1]);
+									last[i]= last[i]+"+"+fields[i];
 							}
 						lastLine="";
 						for(String s : last)
@@ -681,10 +691,12 @@ public class CoNLLAlign {
 				} else if(last[col1].startsWith("*RETOK*-")) {	// only if sentence initial
 						for(int i = 0; i<last.length; i++)
 							if(i!=col1 && i<fields.length) {
+								if(last[i].contains("*"))
+									last[i]=last[i].substring(0,last[i].indexOf("*"))+last[col1]+last[i].substring(last[i].indexOf("*")+1);
 								if(fields[i].equals("?")) 
-									fields[i]=last[i].replaceFirst("\\*",last[col1]);
+									fields[i]=last[i];
 								else if(!last[i].equals("?"))
-									fields[i]=last[i].replaceFirst("\\*",last[col1]) + "+"+fields[i];
+									fields[i]=last[i]+"+"+fields[i];
 							}
 						lastLine="";
 						for(String s : fields)
