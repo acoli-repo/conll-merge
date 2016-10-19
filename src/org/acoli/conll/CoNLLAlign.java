@@ -75,7 +75,7 @@ public class CoNLLAlign {
 		int j = 0;
 		int d = 0;
 		
-		boolean debug = false;
+		boolean debug=false;
 
 		Vector<String[]> left = new Vector<String[]>();
 		Vector<String[]> right = new Vector<String[]>();
@@ -92,7 +92,8 @@ public class CoNLLAlign {
 				}
 			}
 			
-			if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && conll1.get(i).length==1 && conll1.get(i)[0].trim().equals("") && delta.getType().equals(Delta.TYPE.CHANGE)) {
+			if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && 
+				conll1.get(i).length==1 && conll1.get(i)[0].trim().equals("") && delta.getType().equals(Delta.TYPE.CHANGE)) {
 				// left.add(new String[] { "# override empty line replacement"});
 				// right.add(null);
 				left.add(conll1.get(i++));
@@ -102,7 +103,8 @@ public class CoNLLAlign {
 					right.add(conll2.get(j++));
 				}
 				d++;
-			} else if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && conll1.get(i).length>0 && conll1.get(i)[0].trim().startsWith("#") && delta.getType().equals(Delta.TYPE.CHANGE)) {
+			} else if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && 
+				conll1.get(i).length>0 && conll1.get(i)[0].trim().startsWith("#") && delta.getType().equals(Delta.TYPE.CHANGE)) {
 				// left.add(new String[] { "# override comment replacement"});
 				// right.add(null);
 				left.add(conll1.get(i++));
@@ -117,7 +119,10 @@ public class CoNLLAlign {
 				right.add(conll2.get(j++));
 			} else if (delta.getOriginal().size()*delta.getRevised().size()==1) { 		// 1:1 replacements
 				left.add(conll1.get(i++));
-				right.add(conll2.get(j++));
+				if(conll2.get(j)!=null && conll2.get(j).length > col2 && !conll2.get(j)[col2].equals(""))		// drop empty lines on the right
+					right.add(conll2.get(j));
+				else right.add(null);
+				j++;
 				d++;
 			} else { 																	// n:m replacements
 				d++;																	

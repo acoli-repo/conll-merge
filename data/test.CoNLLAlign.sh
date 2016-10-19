@@ -1,7 +1,11 @@
 #!/bin/bash
 PATH_SEPARATOR=':';
-FILES1=conll/*rst*conll;	# conll/*conll
-FILES2=conll/*pdtb*conll;	# conll/*conll
+
+FILES1=conll/*conll;
+FILES2=conll/*conll;
+# FILES1=conll/*coref*conll;	# conll/*conll
+# FILES2=conll/*pdgb*conll;	# conll/*conll
+
 if echo $OSTYPE | grep -i 'cygwin' >&/dev/null; then PATH_SEPARATOR=';'; fi;
 if 
 	javac -classpath ../src/$PATH_SEPARATOR../lib/diffutils-1.2.1.jar ../src/org/acoli/conll/CoNLLAlign.java;
