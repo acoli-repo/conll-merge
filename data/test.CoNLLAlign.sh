@@ -14,7 +14,7 @@ then
 					if [ -e $TGT ]; then echo found $TGT, skipping CoNLLAlign $file1 $file2 1>&2;
 					else 
 						echo run CoNLLAlign $file1 $file2 '>' $TGT 1>&2;
-						java -classpath ../src/$PATH_SEPARATOR../lib/diffutils-1.2.1.jar org/acoli/conll/CoNLLAlign $file1 $file2 > $TGT
+						java -classpath ../src/$PATH_SEPARATOR../lib/diffutils-1.2.1.jar org/acoli/conll/CoNLLAlign $file1 $file2 -drop none > $TGT
 						echo 1>&2;
 						
 						if javac ../src/org/acoli/conll/CoNLLChecks.java; then
@@ -27,7 +27,7 @@ then
 					if [ -e $TGT ]; then echo found $TGT, skipping CoNLLAlign $file1 $file2 1>&2;
 					else 
 						echo run CoNLLAlign $file1 $file2 '>' $TGT 1>&2;
-						java -classpath ../src/$PATH_SEPARATOR../lib/diffutils-1.2.1.jar org/acoli/conll/CoNLLAlign $file1 $file2 -f > $TGT
+						java -classpath ../src/$PATH_SEPARATOR../lib/diffutils-1.2.1.jar org/acoli/conll/CoNLLAlign $file1 $file2 -f -drop none > $TGT
 						echo 1>&2;
 						
 						if javac ../src/org/acoli/conll/CoNLLChecks.java; then
@@ -40,7 +40,7 @@ then
 					if [ -e $TGT ]; then echo found $TGT, skipping CoNLLAlign $file1 $file2 1>&2;
 					else 
 						echo run CoNLLAlign $file1 $file2 '>' $TGT 1>&2;
-						java -classpath ../src/$PATH_SEPARATOR../lib/diffutils-1.2.1.jar org/acoli/conll/CoNLLAlign $file1 $file2 -split > $TGT
+						java -classpath ../src/$PATH_SEPARATOR../lib/diffutils-1.2.1.jar org/acoli/conll/CoNLLAlign $file1 $file2 -split -drop none > $TGT
 						echo 1>&2;
 						
 						if javac ../src/org/acoli/conll/CoNLLChecks.java; then
@@ -53,7 +53,7 @@ then
 					if [ -e $TGT ]; then echo found $TGT, skipping CoNLLAlign $file1 $file2 1>&2;
 					else 
 						echo run CoNLLAlign $file1 $file2 '>' $TGT 1>&2;
-						java -classpath ../src/$PATH_SEPARATOR../lib/diffutils-1.2.1.jar org/acoli/conll/CoNLLAlign $file1 $file2 -split -f > $TGT
+						java -classpath ../src/$PATH_SEPARATOR../lib/diffutils-1.2.1.jar org/acoli/conll/CoNLLAlign $file1 $file2 -split -f -drop none > $TGT
 						echo 1>&2;
 						
 						if javac ../src/org/acoli/conll/CoNLLChecks.java; then

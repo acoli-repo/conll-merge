@@ -437,7 +437,7 @@ public class CoNLLAlign {
 						if(lines.get(k)!=null && lines.get(k).length>j && !lines.get(k)[j].equals("?") && !lines.get(k)[j].equals(""))
 							nextAnno = lines.get(k)[j];
 					String lastAnno = null;
-					for(int k = i-1;k>=0 && lastAnno==null; k++)
+					for(int k = i-1;k>=0 && lastAnno==null; k--)
 						if(lines.get(k)!=null && lines.get(k).length>j && !lines.get(k)[j].equals("?") && !lines.get(k)[j].equals(""))
 							lastAnno = lines.get(k)[j];
 					if(anno.matches("^[IOBES]-.+")) {
