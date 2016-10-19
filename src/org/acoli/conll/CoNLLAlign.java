@@ -724,20 +724,23 @@ public class CoNLLAlign {
 	}
 	
 	public static void main(String[] argv) throws Exception {
-		System.err.println("synopsis: CoNLLAlign FILE1.tsv FILE2.tsv [COL1 COL2] [-f] [-split] [-drop none | -drop COLx..z]\n"+
-			"extract the contents of the specified column, run diff\n"+
-			"and integrate the content of FILE1 and FILE2 on that basis\n"+
-			"(similar to sdiff, but optimized for CoNLL)");
-		if(argv.length==0) System.err.println("\tFILEi.tsv tab-separated text files, e.g. CoNLL format\n"+
-			"\tCOLi      column number to be used for the alignment,\n"+
-			"\t          defaults to 0 (first)\n"+
-			"\t-f        forced merge: mismatching FILE2 tokens are merged with last FILE1 token (lossy)\n"+
-			"\t          suppresses *RETOK* nodes, thus keeping the token sequence intact\n"+
-			"\t-split    by default, the tokenization of the first file is adopted for the output\n"+
-			"\t          with this flag, split tokens from both files into longest common subtokens\n"+
-			"\t-drop     drop specified FILE2 columns, by default, this includes COL2\n"+
-			"\t          default behavior can be suppressed by defining another set of columns\n"+
-			"\t          or -drop none");
+		if(!Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-silent[,\\]].*")) {
+			System.err.println("synopsis: CoNLLAlign FILE1.tsv FILE2.tsv [COL1 COL2] [-silent] [-f] [-split] [-drop none | -drop COLx..z]\n"+
+				"extract the contents of the specified column, run diff\n"+
+				"and integrate the content of FILE1 and FILE2 on that basis\n"+
+				"(similar to sdiff, but optimized for CoNLL)");
+			if(argv.length==0) System.err.println("\tFILEi.tsv tab-separated text files, e.g. CoNLL format\n"+
+				"\tCOLi      column number to be used for the alignment,\n"+
+				"\t          defaults to 0 (first)\n"+
+				"\t-silent   suppress synopsis\n"+
+				"\t-f        forced merge: mismatching FILE2 tokens are merged with last FILE1 token (lossy)\n"+
+				"\t          suppresses *RETOK* nodes, thus keeping the token sequence intact\n"+
+				"\t-split    by default, the tokenization of the first file is adopted for the output\n"+
+				"\t          with this flag, split tokens from both files into longest common subtokens\n"+
+				"\t-drop     drop specified FILE2 columns, by default, this includes COL2\n"+
+				"\t          default behavior can be suppressed by defining another set of columns\n"+
+				"\t          or -drop none");
+		}
 		
 		int col1 = 0;
 		int col2 = 0;
