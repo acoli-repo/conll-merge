@@ -452,8 +452,14 @@ public class CoNLLAlign {
 								 .replaceFirst("^[IOB]-E-","I-");
 					anno=anno.replaceFirst("^[IOBES]-\\*$","*")
 							 .replaceFirst("^[IOBES]-_","_");
+					while(anno.matches("^(.*\\+)?[IOBES]-O(\\+.*)?$")) 												// don't split (I)O(BES)
+						anno=anno.replaceAll("^(.*\\+)?[IOBES]-O(\\+.*)?$","$1O$2");
+					while(anno.endsWith("+O") || anno.startsWith("O+") || anno.contains("+O+"))														// simplify X+O+Y to X+Y
+						anno=anno.replaceAll("\\+O\\+","+").replaceAll("^O\\+","").replaceAll("\\+O$","");
 					lines.get(i)[j]=anno;
 				}
+
+
 				
 		// (2) enforce IOBES validity
 		for(int i = 0; i<lines.size(); i++) 
@@ -628,7 +634,7 @@ public class CoNLLAlign {
 				}
 	}
 	
-	/** simplify IOBES annotations in merged lines produced by prune() */
+	/** simplify IOBES annotations before merging lines in prune() */
 	protected static String simplifyIOBES(String line) {
 		try {
 			while(line.matches(".*\t[IB]-([^+]*)\\+I-\\1.*"))
@@ -715,7 +721,10 @@ public class CoNLLAlign {
 	
 	public static void main(String[] argv) throws Exception {
 		System.err.println("synopsis: CoNLLAlign FILE1.tsv FILE2.tsv [COL1 COL2] [-f] [-split] [-drop none | -drop COLx..z]\n"+
-			"\tFILEi.tsv tab-separated text files, e.g. CoNLL format\n"+
+			"extract the contents of the specified column, run diff\n"+
+			"and integrate the content of FILE1 and FILE2 on that basis\n"+
+			"(similar to sdiff, but optimized for CoNLL)");
+		if(argv.length==0) System.err.println("\tFILEi.tsv tab-separated text files, e.g. CoNLL format\n"+
 			"\tCOLi      column number to be used for the alignment,\n"+
 			"\t          defaults to 0 (first)\n"+
 			"\t-f        forced merge: mismatching FILE2 tokens are merged with last FILE1 token (lossy)\n"+
@@ -724,10 +733,7 @@ public class CoNLLAlign {
 			"\t          with this flag, split tokens from both files into longest common subtokens\n"+
 			"\t-drop     drop specified FILE2 columns, by default, this includes COL2\n"+
 			"\t          default behavior can be suppressed by defining another set of columns\n"+
-			"\t          or -drop none\n"+
-			"extract the contents of the specified column, run diff\n"+
-			"and integrate the content of FILE1 and FILE2 on that basis\n"+
-			"(similar to sdiff, but optimized for CoNLL)");
+			"\t          or -drop none");
 		
 		int col1 = 0;
 		int col2 = 0;

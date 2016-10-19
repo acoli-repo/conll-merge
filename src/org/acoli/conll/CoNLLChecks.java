@@ -9,8 +9,9 @@ import java.util.*;
 public class CoNLLChecks {
 
 	public static void main(String[] argv) throws Exception {
-		System.err.println("CoNLLChecks [FILE1[..n]]\n"+
-				"reads tab-separated CoNLL files from stdin or argument files\n"+
+		System.err.println("CoNLLChecks FILE1[..n]\n"+
+				"reads tab-separated CoNLL files from stdin or argument files");
+		if(argv.length==0) System.err.println(
 				"runs validity checks:\n"
 				+ "(1) is the number of columns (within a sentence) constant\n"						// ok
 				+ "(2) any mismatches between opening and closing round parentheses, i.e. ()\n"
@@ -25,7 +26,7 @@ public class CoNLLChecks {
 				+ "    exception for *RETOK*- (which may be iterated), and aggregated lines (containing\n"
 				+ "    +, produced by CoNLLAlign -f).\n"
 				+ "(5) cells without content (empty cells should have _)\n"					// ok
-				+ "(6) use full-line comments, not in-line comments (to ease merging)\n");			// todo
+				+ "(6) use full-line comments, not in-line comments (to ease merging)\n");			// ok
 		
 		List<Reader> ins = new Vector<Reader>();
 		List<String> files = Arrays.asList(argv);
@@ -85,7 +86,7 @@ public class CoNLLChecks {
 							if(s.equals("(")) openPars.get(i).push(linenr);
 							if(s.equals(")")) {
 								if(openPars.get(i).isEmpty()) {
-									if(!fields[i].equals("*RETOK*-)")) {
+									if(!fields[i].matches(".*\\*RETOK\\*-[^\\s]*\\).*")) { // these should be surrounded by whitespaces
 										report.add(file+", line "+linenr+": OPEN PAR ERROR in column "+i+": found no opening (");
 										errors++;
 									} else {
