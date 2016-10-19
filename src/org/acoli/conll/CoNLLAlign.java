@@ -119,7 +119,11 @@ public class CoNLLAlign {
 				right.add(conll2.get(j++));
 			} else if (delta.getOriginal().size()*delta.getRevised().size()==1) { 		// 1:1 replacements
 				left.add(conll1.get(i++));
-				if(conll2.get(j)!=null && conll2.get(j).length > col2 && !conll2.get(j)[col2].equals(""))		// drop empty lines on the right
+				if(conll2.get(j)!=null && conll2.get(j).length==1 && conll2.get(j)[0].trim().startsWith("#")) {			// keep right-side comments
+					right.add(null);
+					left.add(conll2.get(j));
+					right.add(null);
+				} else if(conll2.get(j)!=null && conll2.get(j).length > col2 && !conll2.get(j)[col2].equals(""))		// drop empty lines on the right
 					right.add(conll2.get(j));
 				else right.add(null);
 				j++;
