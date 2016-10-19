@@ -50,8 +50,10 @@ if [ $STATUS = 'ok' ]; then
 	while [ -e $TMP ]; do
 		TMP=$0.`ls $0*tmp |wc -l`.tmp;
 	done;
+	echo > $TMP;
 	for file in $*; do
-		if [ ! -e $TMP ]; then 
+		if egrep . $TMP >/dev/null; then echo >/dev/null;
+		else
 			if [ -e $file ]; then
 				cp $file $TMP;
 				echo 1>&2;
@@ -65,6 +67,12 @@ if [ $STATUS = 'ok' ]; then
 		fi;
 	done;
 	TMP2=$TMP.bak;
+	
+	TMP_U=$TMP;			# unix version (original will be OS version)
+	
+	if echo $OSTYPE | grep -i cygwin >/dev/null; then
+		TMP=`cygpath -wa $TMP | perl -pe 's/\n//g;'`;
+	fi;
 
 	SPLIT=`echo $* | sed s/'.*\(-split\).*'/'\1'/g | grep split`
 	DROPCOLS=`echo $* | sed s/'.*\(-drop.*\)$'/'\1'/g | grep drop`
@@ -76,7 +84,7 @@ if [ $STATUS = 'ok' ]; then
 				echo 1>&2;
 				echo add $file 1>&2;
 				java -cp $CLASSPATH $CoNLLAlign $TMP $file -silent $SPLIT $F $DROPCOLS > $TMP2;
-				mv $TMP2 $TMP;
+				mv $TMP2 $TMP_U;
 			fi;
 		fi;
 	done;
@@ -85,6 +93,6 @@ if [ $STATUS = 'ok' ]; then
 	# output and cleanup #
 	######################
 
-	cat $TMP;
-	rm $TMP;
+	cat $TMP_U;
+	rm $TMP_U;
 fi;

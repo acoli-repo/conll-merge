@@ -56,4 +56,13 @@ else
 	else
 		./test.CoNLLAlign.sh 2>&1 | tee test.CoNLLAlign.sh.log 1>&2;
 	fi;
+	
+	echo 1>&2
+	echo create and validate full merges 1>&2
+	if [ -e test.merge.all.sh.log ]; then 
+		echo found test.merge.all.sh.log, remove before re-running 1>&2;
+	else
+		./test.merge.all.sh 2>&1 | tee test.merge.all.sh.log 1>&2;
+	fi;
+
 fi;
