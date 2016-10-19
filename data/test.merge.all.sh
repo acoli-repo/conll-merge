@@ -39,12 +39,14 @@ if javac ../src/org/acoli/conll/CoNLLChecks.java; then
 		../cmd/merge.sh -- \
 			conll/wsj_0655.pdtb.conll -f -drop 0 1 | \
 		../cmd/merge.sh -- \
-			conll/wsj_0655.prop.on.conll -f -drop 0 1 2 \
+			conll/wsj_0655.prop.on.conll -f -drop 0 1 2 | \
+		../cmd/retokenize.sh -- \
+			conll/wsj_0655.ptb.on.conll \
 		> $MERGED_F;
 		java -classpath ../src org.acoli.conll.CoNLLChecks $MERGED_F;
 		echo 1>&2;
 	fi;
-
+	
 	if [ -e $SPLIT ]; then echo found $SPLIT, skipping 1>&2;
 		else
 		../cmd/merge.sh \
