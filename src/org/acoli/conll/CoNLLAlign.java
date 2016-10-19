@@ -21,8 +21,12 @@ import difflib.*;
 	cf. Eugene W. Myers (1986). "An O(ND) Difference Algorithm and Its Variations". Algorithmica: November 1986
 	http://xmailserver.org/diff2.pdf (implementation from java diff utils, https://github.com/dnaumenko/java-diff-utils by Dmitry Naumenko)
 	
-	for improved readability of the output, columns of the second file may be dropped. In particular, the second FORM column is dropped
+	for improved readability of the output, columns of the second file may be dropped. In particular, the second FORM column is dropped<br/>
 	
+	@TODO: 
+	- don't add columns to comments
+	- consolidate IOBES repair routines
+	- integrate prune() into write()?
 */ 
 public class CoNLLAlign {
 
