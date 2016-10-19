@@ -107,7 +107,7 @@ public class CoNLLChecks {
 										errors++;
 									}
 								if(iobesPfx.matches("^[IE]$"))
-									if(lastFields[i].matches("^[SEO]-.*")) {
+									if(lastFields[i].replaceAll(".*\\+ *","").matches("^[SEO]-.*")) {
 										report.add(file+", line "+linenr+": IOBES ERROR in column "+i+": IOBES expression \""+fields[i]+"\" does not continue \""+lastFields[i]+"\"");
 										errors++;
 									}
