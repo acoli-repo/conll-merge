@@ -9,6 +9,10 @@ perl -pe '
 	s/_satellite//g;
 	s/span_(nucleus)/$1/g;
 	s/(\() Root \([^\)]*\)/$1/g;
+	while (m/.*\(text _!.*[\(\)].*_!.*/){												# parenthesis escaping in text
+		s/(\(text _!.*) *\( *(.*_!)/$1 -LRB- $2/g;	
+		s/(\(text _!.*) *\) *(.*_!)/$1 -RRB- $2/g;	
+	}
 	while (m/.*\(text _![^_ ]* .*/) {
 		s/(\(text _!)([^_ ]*) /$2 $1/g;
 	}
