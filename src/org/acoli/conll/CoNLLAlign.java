@@ -167,7 +167,7 @@ public class CoNLLAlign {
 					
 					for(int r = 0; r<delta.getRevised().size(); r++) {
 						if(forms2.get(j).trim().startsWith("#")) {
-							left.add(conll2.get(i));
+							left.add(conll2.get(j));
 							right.add(null);
 						} else
 							for(String c : forms2.get(j).replaceAll("(.)","$1\t").trim().split("\t")) {
