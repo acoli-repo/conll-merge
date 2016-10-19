@@ -74,6 +74,8 @@ public class CoNLLAlign {
 		int i = 0;
 		int j = 0;
 		int d = 0;
+		
+		boolean debug = false;
 
 		Vector<String[]> left = new Vector<String[]>();
 		Vector<String[]> right = new Vector<String[]>();
@@ -83,11 +85,13 @@ public class CoNLLAlign {
 			Delta delta = null;
 			if(d<deltas.size()) delta = deltas.get(d);
 			
-			if(delta!=null && delta.getOriginal().getPosition()==i) { 		// DEBUG
-				left.add(new String[] { "# "+delta });
-				right.add(null);
+			if(debug) {
+				if(delta!=null && delta.getOriginal().getPosition()==i) { 		// DEBUG
+					left.add(new String[] { "# "+delta });
+					right.add(null);
+				}
 			}
-
+			
 			if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && conll1.get(i).length==1 && conll1.get(i)[0].trim().equals("") && delta.getType().equals(Delta.TYPE.CHANGE)) {
 				// left.add(new String[] { "# override empty line replacement"});
 				// right.add(null);
@@ -135,8 +139,10 @@ public class CoNLLAlign {
 					List<Integer> chars2conll1 = new Vector<Integer>();
 					List<Integer> chars2conll2 = new Vector<Integer>();
 																							// prepare character-level diff between chars1 and chars2
-					left.add(new String[] { "# "+delta});			// DEBUG
-					right.add(null);
+					if(debug) {
+						left.add(new String[] { "# "+delta});			// DEBUG
+						right.add(null);
+					}
 					
 					for(int o=0; o<delta.getOriginal().size(); o++) {
 						for(String c : forms1.get(i).replaceAll("(.)","$1\t").trim().split("\t")) {
@@ -181,17 +187,22 @@ public class CoNLLAlign {
 				
 	/** to be called with a character-wise alignment, return update vectors for left and right in split */
 	protected Vector<Vector<String[]>> split(List<String> chars1, List<String> chars2, List<Integer> chars2conll1, List<Integer> chars2conll2) {
-				Vector<String[]> left = new Vector<String[]>();								// (1) initialized with character sequences => Diff
+				Vector<String[]> left = new Vector<String[]>();						// (1) initialized with character sequences => Diff
 				Vector<String[]> right = new Vector<String[]>();
+			
+				boolean debug=false;
 		
 				List<Delta> cDeltas = DiffUtils.diff(chars1, chars2).getDeltas();	// (2) aggregate into maximal common subtokens
 
-				left.add(new String[] { "# "+chars1 });					// DEBUG
-				right.add(new String[] {chars2.toString()});
-				left.add(new String[] { "# "+chars2conll1 });
-				right.add(new String[] {chars2conll2.toString()});				
-				left.add(new String[]{ "# cDeltas: "+cDeltas.toString() });
-				right.add(null);
+				if(debug) {
+					left.add(new String[] { "# "+chars1 });					// DEBUG
+					right.add(new String[] {chars2.toString()});
+					left.add(new String[] { "# "+chars2conll1 });
+					right.add(new String[] {chars2conll2.toString()});				
+					left.add(new String[]{ "# cDeltas: "+cDeltas.toString() });
+					right.add(null);
+				}
+					
 				
 				int ci=0;
 				int cj=0;
@@ -515,7 +526,6 @@ public class CoNLLAlign {
 	private void write(Vector<String[]> left, Vector<String[]> right, Set<Integer> dropCols, Writer out) throws IOException {
 				int leftLength = 0;  for(String[] l : left)  if(l!=null && l.length>leftLength)  leftLength=l.length;
 				int rightLength = 0; for(String[] l : right) if(l!=null && l.length>rightLength) rightLength=l.length;
-				
 				
 				for(int line = 0; line<left.size(); line++) {
 					
