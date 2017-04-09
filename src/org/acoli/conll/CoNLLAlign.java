@@ -30,14 +30,14 @@ import difflib.*;
 */ 
 public class CoNLLAlign {
 
-	final private Vector<String[]> conll1;
-	final private Vector<String[]> conll2;
-	final private List<String> forms1;
-	final private List<String> forms2;
-	final private List<Delta> deltas;
+	protected final Vector<String[]> conll1;
+	final protected Vector<String[]> conll2;
+	protected final List<String> forms1;
+	protected final List<String> forms2;
+	protected final List<Delta> deltas;
 	
-	final private int col1;
-	final private int col2;
+	protected final int col1;
+	protected final int col2;
 	
 	public CoNLLAlign(File file1, File file2, int col1, int col2) throws IOException {
 		conll1=read(file1);
@@ -74,7 +74,7 @@ public class CoNLLAlign {
 		annotations are split according to IOBES (this may lead to nested IOBES prefixes that should be post-processed)
 		</li>
 		</ul>		*/
-	public void merge(Writer out, Set<Integer> dropCols, boolean split) throws IOException {
+	void merge(Writer out, Set<Integer> dropCols, boolean split) throws IOException {
 		int i = 0;
 		int j = 0;
 		int d = 0;
@@ -437,7 +437,7 @@ public class CoNLLAlign {
 		side-effect: converts IOB to IOBES <br/>
 		may duplicate annotations, hence apply after undoIOBES4syntax() <br/>
 		note that this routine may corrupt annotations if they contain I-,O-,B-,E-,S- as part of the annotation */
-	private Vector<String[]> repairIOBES(Vector<String[]> lines) {
+	protected Vector<String[]> repairIOBES(Vector<String[]> lines) {
 		// (1) undo nested IOBES
 		for(int i = 0; i<lines.size(); i++) 
 			if(lines.get(i)!=null && lines.get(i).length>0 && !lines.get(i)[0].trim().startsWith("#"))
@@ -498,7 +498,7 @@ public class CoNLLAlign {
 		
 		IOBES fixing routine
 	*/ 
-	private Vector<String[]> undoIOBES4syntax(Vector<String[]> lines) {
+	protected Vector<String[]> undoIOBES4syntax(Vector<String[]> lines) {
 		for(int i = 0; i<lines.size(); i++)
 			if(lines.get(i)!=null && lines.get(i).length>0 && !lines.get(i)[0].trim().startsWith("#"))
 				for(int j = 0; j<lines.get(i).length; j++) {
@@ -550,7 +550,7 @@ public class CoNLLAlign {
 	/** internally called by split() and merge() <br/>
 	    note that in addition to filling up null lines with ?, it also attempts to restore IOBES annotations
 	*/
-	private void write(Vector<String[]> left, Vector<String[]> right, Set<Integer> dropCols, Writer out) throws IOException {
+	protected void write(Vector<String[]> left, Vector<String[]> right, Set<Integer> dropCols, Writer out) throws IOException {
 				int leftLength = 0;  for(String[] l : left)  if(l!=null && l.length>leftLength)  leftLength=l.length;
 				int rightLength = 0; for(String[] l : right) if(l!=null && l.length>rightLength) rightLength=l.length;
 				
