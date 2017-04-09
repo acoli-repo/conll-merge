@@ -8,31 +8,9 @@ import difflib.*;
 /** adaptation of CoNLLAlign when working with massively restructured text, e.g., compiling
 	editions of multiple manuscript versions of a medieval tale
 	Here, identical strings are an exception rather than a rule, so after performing regular CoNLLAlign,
-	we use the established segments and add new links with the most similar unaligned string
-
-	Runs Myers Diff on the FORM column of two CoNLL files to establish an alignment
-	1:1 alignment => append second line to the first
-	n:0 alignment => fill up missing columns with ?
-	0:m alignment => create new empty elements *RETOK*-<FORM>
-	Keeps the tokenization of the first file. Tokenization mismatches are reduced to insertions and deletions.
-	*RETOK*: alternative tokenization can be restored
-	however, adding empty elements may interfere with word offsets used for dependency annotation =>
-	optionally forced pruning: annotations of *RETOK* appended to last regular token, concatenated by + (lossy)
-	alternatively, an explicit word ID column may be used
-	
-	Can be applied to non-CoNLL data, e.g. XML standoff or NIF, if sequentially ordered tokens are assigned their XML or NIF identifiers 
-	as CoNLL annotation
-
-	cf. Eugene W. Myers (1986). "An O(ND) Difference Algorithm and Its Variations". Algorithmica: November 1986
-	http://xmailserver.org/diff2.pdf (implementation from java diff utils, https://github.com/dnaumenko/java-diff-utils by Dmitry Naumenko)
-	
-	for improved readability of the output, columns of the second file may be dropped. In particular, the second FORM column is dropped<br/>
-	
-	@TODO: 
-	- don't add columns to comments
-	- consolidate IOBES repair routines
-	- integrate prune() into write()?
-*/ 
+	we use the established segments and add new links with the most similar unaligned string, using relative 
+	Levenshtein distance
+*/
 public class CoNLLAlignWithLevenshtein extends CoNLLAlign {
 
 	public CoNLLAlignWithLevenshtein(File file1, File file2, int col1, int col2) throws IOException {
@@ -85,20 +63,11 @@ public class CoNLLAlignWithLevenshtein extends CoNLLAlign {
 		return cost[len0 - 1];                                                          
 	}		
 	
-	/** given two CoNLL files, perform token-level merge, no subtokens, here
-	
-		boolean split<br/>
-		<ul>
-		<li> if split=false, then merge two CoNLL files and adopt the tokenization of the first<br/>
-		tokenization mismatches from the second are represented by "empty" PTB words prefixed with *RETOK*-...
-		</li>
-		<li>
-		if split=true, then merge CoNLL files by splitting tokens into maximal common subtokens:
-	    instead of enforcing one tokenization over another, split both tokenizations to minimal common strings and add this as a new first column
-	    to the output<br/>
-		annotations are split according to IOBES (this may lead to nested IOBES prefixes that should be post-processed)
-		</li>
-		</ul>		*/
+	/** given two CoNLL files, perform token-level merge, 
+	 *  adopt the tokenization of the first (no subtokens, here)<br/>
+	 *  inserted words (tokenization mismatches) from the second are represented by "empty" PTB words prefixed with *RETOK*-...<br/>
+	 *  treatment of annotations follows CoNLLAlign
+	 **/
 	void merge(Writer out, Set<Integer> dropCols, boolean split) throws IOException {
 		int i = 0;
 		int j = 0;
@@ -125,8 +94,6 @@ public class CoNLLAlignWithLevenshtein extends CoNLLAlign {
 			
 			if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && 
 				conll1.get(i).length==1 && conll1.get(i)[0].trim().equals("") && delta.getType().equals(Delta.TYPE.CHANGE)) {
-				// left.add(new String[] { "# override empty line replacement"});
-				// right.add(null);
 				left.add(conll1.get(i++));
 				right.add(null);
 				for(int r = 0; r<delta.getRevised().size(); r++) {
@@ -136,8 +103,6 @@ public class CoNLLAlignWithLevenshtein extends CoNLLAlign {
 				d++;
 			} else if(delta!=null && delta.getOriginal().getPosition()==i && delta.getOriginal().size()==1 && 
 				conll1.get(i).length>0 && conll1.get(i)[0].trim().startsWith("#") && delta.getType().equals(Delta.TYPE.CHANGE)) {
-				// left.add(new String[] { "# override comment replacement"});
-				// right.add(null);
 				left.add(conll1.get(i++));
 				right.add(null);
 				for(int r = 0; r<delta.getRevised().size(); r++) {
@@ -231,24 +196,7 @@ public class CoNLLAlignWithLevenshtein extends CoNLLAlign {
 					right.add(null);
 					left.add(conll1.get(i++));
 					o++;
-				}
-
-				
-				
-				//if(!split) 
-/*				{															// (A) regular token-level merge
-					for(int o=0; o<delta.getOriginal().size(); o++) {
-						left.add(conll1.get(i++));
-						right.add(null);
-						// out.write(">"+Arrays.asList(conll1.get(i++))+"\n");
-					}
-					for(int r = 0; r<delta.getRevised().size(); r++) {
-						left.add(null);
-						right.add(conll2.get(j++));
-						//out.write("<"+Arrays.asList(conll2.get(j++))+"\n");
-					}
-				}*/ 
-					
+				}					
 			}
 			
 			// write left and right if at sentence break or at end
@@ -357,11 +305,8 @@ public class CoNLLAlignWithLevenshtein extends CoNLLAlign {
 				"\tCOLi      column number to be used for the alignment,\n"+
 				"\t          defaults to 0 (first)\n"+
 				"\t-silent   suppress synopsis\n"+
-				"\t-f        forced merge: mismatching FILE2 tokens are merged with last FILE1 token (lossy)\n"+
-				"\t          suppresses *RETOK* nodes, thus keeping the token sequence intact\n"+
-				"\t-drop     drop specified FILE2 columns, by default, this includes COL2\n"+
-				"\t          default behavior can be suppressed by defining another set of columns\n"+
-				"\t          or -drop none");
+				"\t-drop     drop specified FILE2 columns, by default, nothing is dropped\n"+
+				"\t          (note that this is unlike CoNLLAlign)\n");
 		}
 		
 		int col1 = 0;
@@ -371,12 +316,7 @@ public class CoNLLAlignWithLevenshtein extends CoNLLAlign {
 			col2 = Integer.parseInt(argv[3]);
 		} catch (Exception e) {};
 	
-		boolean force = Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-f[,\\]].*");
-		boolean split = Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-split[,\\]].*");
-		
 		HashSet<Integer> dropCols = new HashSet<Integer>();
-		if(!Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-drop[,\\]].*"))
-			dropCols.add(col2);
 		
 		int i = 0;
 		while(i<argv.length && !argv[i].toLowerCase().equals("-drop"))
@@ -388,31 +328,6 @@ public class CoNLLAlignWithLevenshtein extends CoNLLAlign {
 		}
 		
 		CoNLLAlignWithLevenshtein me = new CoNLLAlignWithLevenshtein(new File(argv[0]), new File(argv[1]),col1,col2);
-		if(force) {
-			me.prune(new OutputStreamWriter(System.out), !split, dropCols);
-		} else if(split) {
-			me.split(new OutputStreamWriter(System.out), dropCols);
-		} else 
-			me.merge(new OutputStreamWriter(System.out),dropCols);
+		me.merge(new OutputStreamWriter(System.out),dropCols);
 	}
-	
-	Vector<String[]> read(File file) throws IOException {
-		Vector<String[]> result = new Vector<String[]>();
-		BufferedReader in = new BufferedReader(new FileReader(file));
-		for(String line=in.readLine(); line!=null; line=in.readLine()) {
-			if(line.trim().startsWith("#")) 
-				result.add(new String[]{ line });
-			else 
-				result.add(line.replaceAll("[\t ]*$","").split(" *\t+ *"));
-		}
-		return result;
-	}
-	
-	List<String> getCol(Vector<String[]> conll, int col) {
-		List<String> result = new ArrayList<String>();
-		for(int i = 0; i<conll.size(); i++)
-			if(conll.get(i).length==0) result.add(""); else result.add(conll.get(i)[col]);
-		return result;
-	}
-	
 }
