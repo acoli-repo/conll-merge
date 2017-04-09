@@ -1,7 +1,14 @@
 package org.acoli.conll;
 
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Stack;
+import java.util.TreeSet;
+import java.util.Vector;
 
 /** 
  * Selected validity checks on CoNLL files

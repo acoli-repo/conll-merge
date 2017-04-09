@@ -1,33 +1,26 @@
 package org.acoli.conll;
 
-import java.io.*;
-import java.util.*;
-import difflib.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.Vector;
 
+import difflib.Delta;
+import difflib.DiffUtils;
 
-/** Runs Myers Diff on the FORM column of two CoNLL files to establish an alignment
-	1:1 alignment => append second line to the first
-	n:0 alignment => fill up missing columns with ?
-	0:m alignment => create new empty elements *RETOK*-<FORM>
-	Keeps the tokenization of the first file. Tokenization mismatches are reduced to insertions and deletions.
-	*RETOK*: alternative tokenization can be restored
-	however, adding empty elements may interfere with word offsets used for dependency annotation =>
-	optionally forced pruning: annotations of *RETOK* appended to last regular token, concatenated by + (lossy)
-	alternatively, an explicit word ID column may be used
-	
-	Can be applied to non-CoNLL data, e.g. XML standoff or NIF, if sequentially ordered tokens are assigned their XML or NIF identifiers 
-	as CoNLL annotation
-
-	cf. Eugene W. Myers (1986). "An O(ND) Difference Algorithm and Its Variations". Algorithmica: November 1986
-	http://xmailserver.org/diff2.pdf (implementation from java diff utils, https://github.com/dnaumenko/java-diff-utils by Dmitry Naumenko)
-	
-	for improved readability of the output, columns of the second file may be dropped. In particular, the second FORM column is dropped<br/>
-	
-	@TODO: 
-	- don't add columns to comments
-	- consolidate IOBES repair routines
-	- integrate prune() into write()?
-*/ 
+/** skeleton for alignment routines for CoNLL files, based on Myer's Diff without modifications<br/>
+ * specialized sub-routines for treating alignment failures (n:m matches) are implemented in subclasses and 
+ * can be enabled via flags of main() */
 public class CoNLLAlign {
 
 	protected final Vector<String[]> conll1;
@@ -35,7 +28,6 @@ public class CoNLLAlign {
 	protected final List<String> forms1;
 	protected final List<String> forms2;
 	protected final List<Delta> deltas;
-	
 	protected final int col1;
 	protected final int col2;
 	
@@ -49,42 +41,40 @@ public class CoNLLAlign {
 		deltas = DiffUtils.diff(forms1, forms2).getDeltas();		
 	}
 
-	/** shorthand for merge with token level alignment */	
-	public void merge(Writer out, Set<Integer> dropCols) throws IOException {
-		merge(out,dropCols, false);
-	}
-	
-	/** shorthand for merge with sub-token level alignment */
-	public void split(Writer out, Set<Integer> dropCols) throws IOException {
-		merge(out,dropCols, true);
+	Vector<String[]> read(File file) throws IOException {
+		Vector<String[]> result = new Vector<String[]>();
+		BufferedReader in = new BufferedReader(new FileReader(file));
+		for(String line=in.readLine(); line!=null; line=in.readLine()) {
+			if(line.trim().startsWith("#")) 
+				result.add(new String[]{ line });
+			else 
+				result.add(line.replaceAll("[\t ]*$","").split(" *\t+ *"));
+		}
+		in.close();
+		return result;
 	}
 
+	List<String> getCol(Vector<String[]> conll, int col) {
+		List<String> result = new ArrayList<String>();
+		for(int i = 0; i<conll.size(); i++)
+			if(conll.get(i).length==0) result.add(""); else result.add(conll.get(i)[col]);
+		return result;
+	}
 	
-	/** given two CoNLL files, perform token- or subtoken-level merge
-	
-		boolean split<br/>
-		<ul>
-		<li> if split=false, then merge two CoNLL files and adopt the tokenization of the first<br/>
-		tokenization mismatches from the second are represented by "empty" PTB words prefixed with *RETOK*-...
-		</li>
-		<li>
-		if split=true, then merge CoNLL files by splitting tokens into maximal common subtokens:
-	    instead of enforcing one tokenization over another, split both tokenizations to minimal common strings and add this as a new first column
-	    to the output<br/>
-		annotations are split according to IOBES (this may lead to nested IOBES prefixes that should be post-processed)
-		</li>
-		</ul>		*/
-	void merge(Writer out, Set<Integer> dropCols, boolean split) throws IOException {
+	/** given two CoNLL files, perform token-level merge using Myer's diff, adopt the tokenization of the first <br/>
+	 * tokenization mismatches from the second are represented by "empty" PTB words prefixed with *RETOK*-...
+	 */
+	void merge(Writer out, Set<Integer> dropCols) throws IOException {
 		int i = 0;
 		int j = 0;
 		int d = 0;
 		
 		boolean debug=false;
-
+	
 		Vector<String[]> left = new Vector<String[]>();
 		Vector<String[]> right = new Vector<String[]>();
 		while(i<conll1.size() && j<conll2.size()) {
-
+	
 			// build left and right
 			Delta delta = null;
 			if(d<deltas.size()) delta = deltas.get(d);
@@ -132,10 +122,9 @@ public class CoNLLAlign {
 				else right.add(null);
 				j++;
 				d++;
-			} else { 																	// n:m replacements
-				d++;																	
-
-				if(!split) {															// (A) regular token-level merge
+			} else { 														// n:m replacements
+				d++;														// just written one after another, with *RETOK*-...
+				
 					for(int o=0; o<delta.getOriginal().size(); o++) {
 						left.add(conll1.get(i++));
 						right.add(null);
@@ -146,57 +135,10 @@ public class CoNLLAlign {
 						right.add(conll2.get(j++));
 						//out.write("<"+Arrays.asList(conll2.get(j++))+"\n");
 					}
-				} else  {																// (B) sub-token merge				
-					List<String> chars1 = new Vector<String>();								
-					List<String> chars2 = new Vector<String>();
-					List<Integer> chars2conll1 = new Vector<Integer>();
-					List<Integer> chars2conll2 = new Vector<Integer>();
-																							// prepare character-level diff between chars1 and chars2
-					if(debug) {
-						left.add(new String[] { "# "+delta});			// DEBUG
-						right.add(null);
-					}
-					
-					for(int o=0; o<delta.getOriginal().size(); o++) {
-						if(forms1.get(i).trim().startsWith("#")) {							// exclude comments
-							left.add(conll1.get(i));
-							right.add(null);						
-						} else
-							for(String c : forms1.get(i).replaceAll("(.)","$1\t").trim().split("\t")) {
-								chars1.add(c);
-								chars2conll1.add(i);
-							}
-						i++;
-					}
-					
-					for(int r = 0; r<delta.getRevised().size(); r++) {
-						if(forms2.get(j).trim().startsWith("#")) {
-							left.add(conll2.get(j));
-							right.add(null);
-						} else
-							for(String c : forms2.get(j).replaceAll("(.)","$1\t").trim().split("\t")) {
-								chars2.add(c);
-								chars2conll2.add(j);
-							}
-						j++;
-					}
-
-					Vector<Vector<String[]>> updateLR = split(chars1,chars2,chars2conll1, chars2conll2);
-					left.addAll(updateLR.get(0));
-					right.addAll(updateLR.get(1));
-				}
 			}
 			
 			// write left and right if at sentence break or at end
 			if(i>=conll1.size() || j>=conll2.size() || (forms1.get(i).trim().equals("") && forms2.get(j).trim().equals(""))) {
-				
-				if(split) {
-					left=undoIOBES4syntax(left);
-					right=undoIOBES4syntax(right);
-					
-					left=repairIOBES(left);
-					right=repairIOBES(right);
-				}
 				
 				write(left,right,dropCols,out);
 				left.clear();
@@ -204,472 +146,113 @@ public class CoNLLAlign {
 			}
 		}
 	}
-
-				
-	/** to be called with a character-wise alignment, return update vectors for left and right in split */
-	protected Vector<Vector<String[]>> split(List<String> chars1, List<String> chars2, List<Integer> chars2conll1, List<Integer> chars2conll2) {
-				Vector<String[]> left = new Vector<String[]>();						// (1) initialized with character sequences => Diff
-				Vector<String[]> right = new Vector<String[]>();
-			
-				boolean debug=false;
-		
-				List<Delta> cDeltas = DiffUtils.diff(chars1, chars2).getDeltas();	// (2) aggregate into maximal common subtokens
-
-				if(debug) {
-					left.add(new String[] { "# "+chars1 });					// DEBUG
-					right.add(new String[] {chars2.toString()});
-					left.add(new String[] { "# "+chars2conll1 });
-					right.add(new String[] {chars2conll2.toString()});				
-					left.add(new String[]{ "# cDeltas: "+cDeltas.toString() });
-					right.add(null);
-				}
-					
-				
-				int ci=0;
-				int cj=0;
-				int cd=0;
-				
-				while(ci<chars1.size() || cj<chars2.size()) {							// use I(O)BE(S) encoding to represent split annotations 
-					
-					// build left and right
-					Delta cDelta = null;
-					if(cd<cDeltas.size()) cDelta = cDeltas.get(cd);
-					
-					if(cDelta==null || cDelta.getOriginal().getPosition()>ci) {					// no change => append to last subtoken or create a new one
-						if(ci>0 && cj>0 && chars2conll1.get(ci-1).equals(chars2conll1.get(ci)) && chars2conll2.get(cj-1).equals(chars2conll2.get(cj)) && left.get(left.size()-1)!=null && right.get(right.size()-1)!=null) {
-							left.get(left.size()-1)[col1]=left.get(left.size()-1)[col1]+chars1.get(ci++);
-							if(right.get(right.size()-1).length>col2) right.get(right.size()-1)[col2]=right.get(right.size()-1)[col2]+chars2.get(cj++);
-							
-							// IOBE(S)
-							if(ci>=chars2conll1.size()-1 && cj>=chars2conll2.size()-1) {
-								for(int f = 0; f<left.get(left.size()-1).length; f++)
-									if(f!=col1)
-										left.get(left.size()-1)[f]=left.get(left.size()-1)[f].replaceFirst("^B-","S-").replaceFirst("^I-","E-");
-								for(int f = 0; f<right.get(right.size()-1).length; f++)
-									if(f!=col2)
-										right.get(right.size()-1)[f]=right.get(right.size()-1)[f].replaceFirst("^B-","S-").replaceFirst("^I-","E-");
-							}
-						} else { // new subtoken
-							left.add(Arrays.copyOf(conll1.get(chars2conll1.get(ci)),conll1.get(chars2conll1.get(ci)).length));
-							if(left.get(left.size()-1).length>col1) left.get(left.size()-1)[col1]=chars1.get(ci);
-							right.add(Arrays.copyOf(conll2.get(chars2conll2.get(cj)),conll2.get(chars2conll2.get(cj)).length));
-							if(right.get(right.size()-1).length>0) right.get(right.size()-1)[col2]=chars2.get(cj);
-							
-							// IOBE(S) left
-							String iobes="I-";
-							if(ci==0 || !chars2conll1.get(ci).equals(chars2conll1.get(ci-1)))
-								iobes="B-";
-							if(ci==chars2conll1.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","S-");
-							for(int f = 0; f<left.get(left.size()-1).length; f++)
-								if(f!=col1)
-									left.get(left.size()-1)[f]=(iobes+left.get(left.size()-1)[f]);							
-							if(ci>0 && !chars2conll1.get(ci).equals(chars2conll1.get(ci-1)) && left.size()>2 && left.get(left.size()-2)!=null) {
-								for(int f = 0; f<left.get(left.size()-2).length; f++)
-									if(f!=col1)
-										left.get(left.size()-2)[f]=left.get(left.size()-2)[f].replaceFirst("^B-","S-").replaceFirst("^I-","E-");
-							}
-
-							// IOBE(S) right
-							iobes="I-";
-							if(cj==0 || !chars2conll2.get(cj).equals(chars2conll2.get(cj-1)))
-								iobes="B-";
-							if(cj==chars2conll2.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","S-");
-							for(int f = 0; f<right.get(right.size()-1).length; f++)
-								if(f!=col2)
-									right.get(right.size()-1)[f]=(iobes+right.get(right.size()-1)[f]);							
-							if(cj>0 && !chars2conll2.get(cj).equals(chars2conll2.get(cj-1)) && right.size()>2 && right.get(right.size()-2)!=null) {
-								for(int f = 0; f<right.get(right.size()-2).length; f++)
-									if(f!=col2)
-										right.get(right.size()-2)[f]=right.get(right.size()-2)[f].replaceFirst("^B-","S-").replaceFirst("^I-","E-");
-							}
-							
-							ci++;
-							cj++;
-							
-						}
-					} else if (cDelta.getOriginal().size()*cDelta.getRevised().size()==1) { 		// 1:1 replacements => append to last subtoken or create a new one
-						if(ci>0 && cj>0 && chars2conll1.get(ci-1).equals(chars2conll1.get(ci)) && chars2conll2.get(cj-1).equals(chars2conll2.get(cj))) {
-							left.get(left.size()-1)[col1]=left.get(left.size()-1)[col1]+chars1.get(ci);
-							right.get(right.size()-1)[col2]=right.get(right.size()-1)[col2]+chars2.get(cj);
-							
-							// IOBE(S)
-							if(ci==chars2conll1.size() && cj==chars2conll2.size()) {
-								for(int f = 0; f<left.get(left.size()-1).length; f++)
-									if(f!=col1)
-										left.get(left.size()-1)[f]=left.get(left.size()-1)[f].replaceFirst("^B-","S-").replaceFirst("^I-","E-");
-								for(int f = 0; f<right.get(right.size()-1).length; f++)
-									if(f!=col2)
-										right.get(right.size()-1)[f]=right.get(right.size()-1)[f].replaceFirst("^B-","S-").replaceFirst("^I-","E-");
-							}									
-							ci++;
-							cj++;
-						} else { // new subtoken
-							left.add(Arrays.copyOf(conll1.get(chars2conll1.get(ci)),conll1.get(chars2conll1.get(ci)).length));
-							if(left.get(left.size()-1).length>col1) left.get(left.size()-1)[col1]=chars1.get(ci);
-							right.add(Arrays.copyOf(conll2.get(chars2conll2.get(cj)),conll2.get(chars2conll2.get(cj)).length));
-							if(right.get(right.size()-1).length>0) right.get(right.size()-1)[col2]=chars2.get(cj);
-							
-							// IOBE(S) left
-							String iobes="I-";
-							if(ci==0 || !chars2conll1.get(ci).equals(chars2conll1.get(ci-1)))
-								iobes="B-";
-							if(ci==chars2conll1.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","S-");
-							for(int f = 0; f<left.get(left.size()-1).length; f++)
-								if(f!=col1)
-									left.get(left.size()-1)[f]=(iobes+left.get(left.size()-1)[f]);							
-							if(ci>0 && !chars2conll1.get(ci).equals(chars2conll1.get(ci-1)) && left.size()>2 && left.get(left.size()-2)!=null) {
-								for(int f = 0; f<left.get(left.size()-2).length; f++)
-									if(f!=col1)
-										left.get(left.size()-2)[f]=left.get(left.size()-2)[f].replaceFirst("^B-","S-").replaceFirst("^I-","E-");
-							}
-
-							// IOBE(S) right
-							iobes="I-";
-							if(cj==0 || !chars2conll2.get(cj).equals(chars2conll2.get(cj-1)))
-								iobes="B-";
-							if(cj==chars2conll2.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","S-");
-							for(int f = 0; f<right.get(right.size()-1).length; f++)
-								if(f!=col2)
-									right.get(right.size()-1)[f]=(iobes+right.get(right.size()-1)[f]);							
-							if(cj>0 && !chars2conll2.get(cj).equals(chars2conll2.get(cj-1)) && right.size()>2 && right.get(right.size()-2)!=null) {
-								for(int f = 0; f<right.get(right.size()-2).length; f++)
-									if(f!=col2)
-										right.get(right.size()-2)[f]=right.get(right.size()-2)[f].replaceFirst("^B-","S-").replaceFirst("^I-","E-");
-							}							
-
-							ci++;
-							cj++;
-						}
-						cd++;
-					} else {																	// n:m replacements
-						cd++;
-						for(int o=0; o<cDelta.getOriginal().size(); o++) {
-							if(ci>0 && right.get(right.size()-1)==null && chars2conll1.get(ci-1).equals(chars2conll1.get(ci))) {
-								left.get(left.size()-1)[col1]=left.get(left.size()-1)[col1]+chars1.get(ci);		// append to last stok
-								
-								// IOBE(S)
-								if(ci==chars2conll1.size()-1) 
-									for(int f = 0; f<left.get(left.size()-1).length; f++)
-										if(f!=col1)
-											left.get(left.size()-1)[f]=left.get(left.size()-1)[f].replaceFirst("^B-","S-").replaceFirst("^I-","E-");
-							
-								ci++;									
-							} else {																	// create new stok
-								String[] array = Arrays.copyOf(conll1.get(chars2conll1.get(ci)),conll1.get(chars2conll1.get(ci)).length);
-								if(array.length==0) {
-									array=new String[col1+1];
-									Arrays.fill(array,"");	
-								}
-								array[col1]=chars1.get(ci);
-								left.add(array);
-								
-								// IOBE(S) left
-								String iobes="I-";
-								if(ci==0 || !chars2conll1.get(ci).equals(chars2conll1.get(ci-1)))
-									iobes="B-";
-								if(ci==chars2conll1.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","S-");
-								for(int f = 0; f<left.get(left.size()-1).length; f++)
-									if(f!=col1)
-										left.get(left.size()-1)[f]=(iobes+left.get(left.size()-1)[f]);							
-								if(ci>0 && !chars2conll1.get(ci).equals(chars2conll1.get(ci-1)) && left.size()>2 && left.get(left.size()-2)!=null) {
-									for(int f = 0; f<left.get(left.size()-2).length; f++)
-										if(f!=col1)
-											left.get(left.size()-2)[f]=left.get(left.size()-2)[f].replaceFirst("^B-","S-").replaceFirst("^I-","E-");
-								}
-								
-								ci++;
-								right.add(null);
-							}
-						}
-						
-						for(int r = 0; r<cDelta.getRevised().size(); r++) {
-							if(cj>0 && left.get(left.size()-1)==null && chars2conll2.get(cj-1).equals(chars2conll2.get(cj))) {
-								right.get(right.size()-1)[col2]=right.get(right.size()-1)[col2]+chars2.get(cj);		// append to last stok
-
-								// IOBE(S)
-								if(cj==chars2conll2.size()-1) 
-									for(int f = 0; f<right.get(right.size()-1).length; f++)
-										if(f!=col2)
-											right.get(right.size()-1)[f]=right.get(right.size()-1)[f].replaceFirst("^B-","S-").replaceFirst("^I-","E-");
-
-								cj++;
-								
-							} else {
-								String[] array = Arrays.copyOf(conll2.get(chars2conll2.get(cj)),conll2.get(chars2conll2.get(cj)).length);
-								if(array.length==0) {
-									array=new String[col2+1];
-									Arrays.fill(array,"");	
-								}
-								array[col2]=chars2.get(cj);
-								right.add(array);
-								
-								// IOBE(S) right
-								String iobes="I-";
-								if(cj==0 || !chars2conll2.get(cj).equals(chars2conll2.get(cj-1)))
-									iobes="B-";
-								if(cj==chars2conll2.size()-1) iobes=iobes.replaceFirst("^I-","E-").replaceFirst("^B-","S-");
-								for(int f = 0; f<right.get(right.size()-1).length; f++)
-									if(f!=col2)
-										right.get(right.size()-1)[f]=(iobes+right.get(right.size()-1)[f]);							
-								if(cj>0 && !chars2conll2.get(cj).equals(chars2conll2.get(cj-1)) && right.size()>2 && right.get(right.size()-2)!=null) {
-									for(int f = 0; f<right.get(right.size()-2).length; f++)
-										if(f!=col2)
-											right.get(right.size()-2)[f]=right.get(right.size()-2)[f].replaceFirst("^B-","S-").replaceFirst("^I-","E-");
-								}
-								
-								cj++;
-								left.add(null);
-							}
-						}
-					}
-				}
-				
-				Vector<Vector<String[]>> result = new Vector<Vector<String[]>>();
-				result.add(left);
-				result.add(right);
-				return result;
-			}
-
 	
-	/** helper routine for split():
-		(1) undo nested IOBES (may be lossy)
-		(2) enforce IOBES validity (proper opening and closing)
-		side-effect: converts IOB to IOBES <br/>
-		may duplicate annotations, hence apply after undoIOBES4syntax() <br/>
-		note that this routine may corrupt annotations if they contain I-,O-,B-,E-,S- as part of the annotation */
-	protected Vector<String[]> repairIOBES(Vector<String[]> lines) {
-		// (1) undo nested IOBES
-		for(int i = 0; i<lines.size(); i++) 
-			if(lines.get(i)!=null && lines.get(i).length>0 && !lines.get(i)[0].trim().startsWith("#"))
-				for(int j = 0; j<lines.get(i).length; j++) {
-					String anno = lines.get(i)[j];
-					while(anno.matches("^[IOBES]-[IOBES]-.*")) 
-						anno=anno.replaceFirst("^[IOBES]-I-","I-")
-								 .replaceFirst("^[IOBES]-O-","O-")
-								 .replaceFirst("^I-S-","I-")
-								 .replaceFirst("^B-S-","B-")
-								 .replaceFirst("^E-S-","E-")
-								 .replaceFirst("^S-S-","S-")
-								 .replaceFirst("^[SB]-B-","B-")
-								 .replaceFirst("^[IOE]-B-","I-")
-								 .replaceFirst("^[ES]-E-","E-")
-								 .replaceFirst("^[IOB]-E-","I-");
-					anno=anno.replaceFirst("^[IOBES]-\\*$","*")
-							 .replaceFirst("^[IOBES]-_","_");
-					while(anno.matches("^(.*\\+)?[IOBES]-O(\\+.*)?$")) 												// don't split (I)O(BES)
-						anno=anno.replaceAll("^(.*\\+)?[IOBES]-O(\\+.*)?$","$1O$2");
-					while(anno.endsWith("+O") || anno.startsWith("O+") || anno.contains("+O+"))														// simplify X+O+Y to X+Y
-						anno=anno.replaceAll("\\+O\\+","+").replaceAll("^O\\+","").replaceAll("\\+O$","");
-					lines.get(i)[j]=anno;
-				}
-
-
-				
-		// (2) enforce IOBES validity
-		for(int i = 0; i<lines.size(); i++) 
-			if(lines.get(i)!=null && lines.get(i).length>0 && !lines.get(i)[0].trim().startsWith("#"))
-				for(int j = 0; j<lines.get(i).length; j++) {
-					String anno = lines.get(i)[j];
-					String nextAnno = null;
-					for(int k = i+1;k<lines.size() && nextAnno==null; k++)
-						if(lines.get(k)!=null && lines.get(k).length>j && !lines.get(k)[j].equals("?") && !lines.get(k)[j].equals(""))
-							nextAnno = lines.get(k)[j];
-					String lastAnno = null;
-					for(int k = i-1;k>=0 && lastAnno==null; k--)
-						if(lines.get(k)!=null && lines.get(k).length>j && !lines.get(k)[j].equals("?") && !lines.get(k)[j].equals(""))
-							lastAnno = lines.get(k)[j];
-					if(anno.matches("^[IOBES]-.+")) {
-						String iobesBody = anno.substring(2);
-						if(lastAnno==null || !lastAnno.replaceFirst("^[BI]-","").equals(iobesBody))
-							anno=anno.replaceFirst("^I-","B-").replaceFirst("^E-","S-");
-						if(nextAnno==null || !nextAnno.replaceFirst("^[EI]-","").equals(iobesBody))
-							anno=anno.replaceFirst("^I-","E-").replaceFirst("^B-","S-");
-					}
-					lines.get(i)[j]=anno;
-				}
-		
-		return lines;
-	}
-
-	/** helper routine for split(): 
-		undo IOBES prefixing for syntax (i.e., annotations with non-balanced parentheses)
-		to make sure that parentheses match <br/>
-		also, we remove IOBES marking for _<br/>
-		
-		IOBES fixing routine
-	*/ 
-	protected Vector<String[]> undoIOBES4syntax(Vector<String[]> lines) {
-		for(int i = 0; i<lines.size(); i++)
-			if(lines.get(i)!=null && lines.get(i).length>0 && !lines.get(i)[0].trim().startsWith("#"))
-				for(int j = 0; j<lines.get(i).length; j++) {
-					String anno = lines.get(i)[j];
-					
-					int leftPar = anno.replaceAll("[^\\(]","").length();
-					int rightPar = anno.replaceAll("[^\\)]","").length();
-					if(leftPar!=rightPar || anno.matches("^[IOBES]-[\\?_]$")) { // possible for syntax => we remove IOBES, note that we keep it for matching sequences
-
-						String nextAnno = null;		// fix IOBES (we don't generally apply this fix, might interfere with nested IOBES annotations)
-						String lastAnno = null;
-						for(int k = i+1;k<lines.size() && nextAnno==null; k++)
-							if(lines.get(k)!=null && lines.get(k).length>j && !lines.get(k)[j].equals("?") && !lines.get(k)[j].equals(""))
-								nextAnno = lines.get(k)[j];							
-						for(int k = i-1;k>=0 && lastAnno==null; k--)
-							if(lines.get(k)!=null && lines.get(k).length>j && !lines.get(k)[j].equals("?") && !lines.get(k)[j].equals(""))
-								lastAnno = lines.get(k)[j];							
-
-						if(anno.startsWith("B-") && lastAnno!=null && lastAnno.equals(anno)) anno=anno.replaceFirst("B-","I-");
-						if(anno.startsWith("B-") && (nextAnno==null || !nextAnno.matches("^[IE]-.*"))) anno=anno.replaceFirst("B","S");
-						if(anno.startsWith("I-") && (nextAnno==null || !nextAnno.matches("^[IE]-.*"))) anno=anno.replaceFirst("I","E");
-						if(anno.startsWith("E-") && nextAnno!=null && nextAnno.equals(anno)) anno=anno.replaceFirst("E-","I-");
-					
-						if(anno.startsWith("B-")) {
-							anno=anno.substring(2);
-							if(anno.contains("*")) {
-								anno=anno.replaceFirst("\\*.*","*");
-							} else anno=anno;
-						} else if(anno.startsWith("I-")) {
-							if(anno.contains("*"))
-								anno="*";
-							else anno="_";
-						} else if(anno.startsWith("E-")) {
-							anno=anno.substring(2);
-							if(anno.contains("*"))
-								anno=anno.replaceFirst("^[^\\*]*\\*","\\*");
-							else anno="_";
-						}
-						else if(anno.startsWith("S-"))
-							anno=anno.substring(2);
-
-						// lines.get(i)[j]="("+lines.get(i)[j]+" after "+lastAnno+" before "+nextAnno+" >) "+anno; // DEBUG
-						lines.get(i)[j]=anno;
-					}
-				}
-		return lines;
-	}
-
-	/** internally called by split() and merge() <br/>
-	    note that in addition to filling up null lines with ?, it also attempts to restore IOBES annotations
-	*/
+	/** internally called by merge() <br/>
+    note that in addition to filling up null lines with ?, it also attempts to restore IOBES annotations
+	 */
 	protected void write(Vector<String[]> left, Vector<String[]> right, Set<Integer> dropCols, Writer out) throws IOException {
-				int leftLength = 0;  for(String[] l : left)  if(l!=null && l.length>leftLength)  leftLength=l.length;
-				int rightLength = 0; for(String[] l : right) if(l!=null && l.length>rightLength) rightLength=l.length;
+			int leftLength = 0;  for(String[] l : left)  if(l!=null && l.length>leftLength)  leftLength=l.length;
+			int rightLength = 0; for(String[] l : right) if(l!=null && l.length>rightLength) rightLength=l.length;
+			
+			for(int line = 0; line<left.size(); line++) {
 				
-				for(int line = 0; line<left.size(); line++) {
+				// DEBUG
+				// out.write("# ");
+				// if(left.get(line)==null) out.write("null"); else out.write(Arrays.asList(left.get(line)).toString());
+				// out.write(" and ");
+				// if(right.get(line)==null) out.write("null"); else out.write(Arrays.asList(right.get(line)).toString());
+				// out.write("\n");
+				
+				// keep empty lines if one on the left
+				if((( left.get(line)!=null && (left.get(line).length==0 || left.get(line).length==1 && left.get(line)[0].trim().equals("")) )) && (right.get(line)==null || right.get(line).length==0 || (right.get(line).length==1 && right.get(line)[0].trim().equals("")))) {
+					out.write("\n");
+				} else if((( left.get(line)!=null && (left.get(line).length==0 || left.get(line).length==1 && left.get(line)[0].trim().equals("")) )) && ((right.get(line).length==1 && col2==0 && !right.get(line)[0].trim().equals("")))) {
+					out.write("\n");
+					out.write("# "+right.get(line)[0]+"\n");		// this is a misalignment, keep original token as comment
+				} else if(left.get(line)==null && right.get(line).length==1 && right.get(line)[0].trim().equals("")) {
+					// nothing (insertions of empty lines from the right)
+				} else {
 					
-					// DEBUG
-					// out.write("# ");
-					// if(left.get(line)==null) out.write("null"); else out.write(Arrays.asList(left.get(line)).toString());
-					// out.write(" and ");
-					// if(right.get(line)==null) out.write("null"); else out.write(Arrays.asList(right.get(line)).toString());
-					// out.write("\n");
-					
-					// keep empty lines if one on the left
-					if((( left.get(line)!=null && (left.get(line).length==0 || left.get(line).length==1 && left.get(line)[0].trim().equals("")) )) && (right.get(line)==null || right.get(line).length==0 || (right.get(line).length==1 && right.get(line)[0].trim().equals("")))) {
-						out.write("\n");
-					} else if((( left.get(line)!=null && (left.get(line).length==0 || left.get(line).length==1 && left.get(line)[0].trim().equals("")) )) && ((right.get(line).length==1 && col2==0 && !right.get(line)[0].trim().equals("")))) {
-						out.write("\n");
-						out.write("# "+right.get(line)[0]+"\n");		// this is a misalignment, keep original token as comment
-					} else if(left.get(line)==null && right.get(line).length==1 && right.get(line)[0].trim().equals("")) {
-						// nothing (insertions of empty lines from the right)
-					} else {
-						
-						// write left side
-						for(int col = 0; col<leftLength; col++) {
-							String lastValue = null;									
-							for(int a = line-1; a>=0 && lastValue==null; a--)
-								if(left.get(a)!=null && left.get(a).length>col) lastValue=left.get(a)[col];
-							String nextValue = null;
-							for(int a = line+1; a<left.size() && nextValue==null; a++)
-								if(left.get(a)!=null && left.get(a).length>col) nextValue=left.get(a)[col];
+					// write left side
+					for(int col = 0; col<leftLength; col++) {
+						String lastValue = null;									
+						for(int a = line-1; a>=0 && lastValue==null; a--)
+							if(left.get(a)!=null && left.get(a).length>col) lastValue=left.get(a)[col];
+						String nextValue = null;
+						for(int a = line+1; a<left.size() && nextValue==null; a++)
+							if(left.get(a)!=null && left.get(a).length>col) nextValue=left.get(a)[col];
 
-							if((left.get(line)==null) ||
-							   col>=left.get(line).length) {
-								   if(right.get(line)==null || !right.get(line)[0].trim().startsWith("#")) {
-										if(col==col1 && right.get(line)!=null && right.get(line).length>col2)
-											out.write("*RETOK*-"+right.get(line)[col2]); 
-										else if(lastValue!=null && lastValue.matches("^[BI]-.*") && nextValue!=null && 
-										   nextValue.substring(0,1).matches("^[IE]") && nextValue.substring(1).equals(lastValue.replaceFirst("^.",""))) {
-											out.write("I"+lastValue.replaceFirst("^.",""));								// IOBES inference/repair
-										} else {
-											out.write("?");								// default (no IOBES inference)
-										};
-								   }
-							   } else {
-								   out.write(left.get(line)[col]);
-							   }
-							if(left.get(line)!=null || !right.get(line)[0].trim().startsWith("#")) out.write("\t");
-						}
-						
-						// write right side
-						int col=0;
-						if(right.get(line)!=null) {
-							while(col<right.get(line).length) {
-								if(!dropCols.contains(col)) { 
-									out.write(right.get(line)[col]);
-									if(col<rightLength-1) out.write("\t");
-								}
-								col++;
-							}
-						}
-						if((right.get(line)!=null && right.get(line).length>0 && !right.get(line)[0].trim().startsWith("#")) || (left.get(line)!=null && left.get(line).length>0 && !left.get(line)[0].trim().startsWith("#")))
-							while(col<rightLength) {
-								if(!dropCols.contains(col)) {
-									
-									String lastValue = null;									
-									for(int a = line-1; a>=0 && lastValue==null; a--)
-										if(right.get(a)!=null && right.get(a).length>col) lastValue=right.get(a)[col];										
-									String nextValue = null;
-									for(int a = line+1; a<right.size() && nextValue==null; a++)
-										if(right.get(a)!=null && right.get(a).length>col) nextValue=right.get(a)[col];										
-									if(lastValue!=null && lastValue.matches("^[BI]-.*") && nextValue!=null && 
+						if((left.get(line)==null) ||
+						   col>=left.get(line).length) {
+							   if(right.get(line)==null || !right.get(line)[0].trim().startsWith("#")) {
+									if(col==col1 && right.get(line)!=null && right.get(line).length>col2)
+										out.write("*RETOK*-"+right.get(line)[col2]); 
+									else if(lastValue!=null && lastValue.matches("^[BI]-.*") && nextValue!=null && 
 									   nextValue.substring(0,1).matches("^[IE]") && nextValue.substring(1).equals(lastValue.replaceFirst("^.",""))) {
-										out.write("I"+lastValue.replaceFirst("^.",""));									// IOBES inference/repair
+										out.write("I"+lastValue.replaceFirst("^.",""));								// IOBES inference/repair
 									} else {
-										out.write("?");									// default (no IOBES inference)
+										out.write("?");								// default (no IOBES inference)
 									};
-
-									if(col<rightLength-1) out.write("\t");
-								}
-								col++;
-							}
-						out.write("\n");
+							   }
+						   } else {
+							   out.write(left.get(line)[col]);
+						   }
+						if(left.get(line)!=null || !right.get(line)[0].trim().startsWith("#")) out.write("\t");
 					}
-					out.flush();
+					
+					// write right side
+					int col=0;
+					if(right.get(line)!=null) {
+						while(col<right.get(line).length) {
+							if(!dropCols.contains(col)) { 
+								out.write(right.get(line)[col]);
+								if(col<rightLength-1) out.write("\t");
+							}
+							col++;
+						}
+					}
+					if((right.get(line)!=null && right.get(line).length>0 && !right.get(line)[0].trim().startsWith("#")) || (left.get(line)!=null && left.get(line).length>0 && !left.get(line)[0].trim().startsWith("#")))
+						while(col<rightLength) {
+							if(!dropCols.contains(col)) {
+								
+								String lastValue = null;									
+								for(int a = line-1; a>=0 && lastValue==null; a--)
+									if(right.get(a)!=null && right.get(a).length>col) lastValue=right.get(a)[col];										
+								String nextValue = null;
+								for(int a = line+1; a<right.size() && nextValue==null; a++)
+									if(right.get(a)!=null && right.get(a).length>col) nextValue=right.get(a)[col];										
+								if(lastValue!=null && lastValue.matches("^[BI]-.*") && nextValue!=null && 
+								   nextValue.substring(0,1).matches("^[IE]") && nextValue.substring(1).equals(lastValue.replaceFirst("^.",""))) {
+									out.write("I"+lastValue.replaceFirst("^.",""));									// IOBES inference/repair
+								} else {
+									out.write("?");									// default (no IOBES inference)
+								};
+
+								if(col<rightLength-1) out.write("\t");
+							}
+							col++;
+						}
+					out.write("\n");
 				}
-	}
-	
-	/** simplify IOBES annotations before merging lines in prune() */
-	protected static String simplifyIOBES(String line) {
-		try {
-			while(line.matches(".*\t[IB]-([^+]*)\\+I-\\1.*"))
-				line=line.replaceAll("\t([IB])-([^+]*)\\+I-\\2","\t$1-$2");
-			while(line.matches(".*\tB-([^+]*)\\+E-\\1.*"))
-				line=line.replaceAll("\tB-([^+]*)\\+E-\\1","\t$1");
-			while(line.matches(".*\tI-([^+]*)\\+E-\\1.*"))
-				line=line.replaceAll("\tI-([^+]*)\\+E-\\1","\tE-$1");
-		} catch (java.util.regex.PatternSyntaxException e) {
-			e.printStackTrace();
-			System.err.println("while processing \""+line+"\"");
-		}
-		return line;
+				out.flush();
+			}
 	}
 	
 	/** run merge() or split(), remove all comments, merge *RETOK*-... tokens with preceding token (or following, if no preceding found)<br>
-		Note: this is lossy for n:m matches, e.g.
-		 <code>
-		 a       DT      (NP (NP *       DT      (NP (NP *
-		 19-month        JJ      *       ?       ?
-		 cease-fire      NN      *)      CD+HYPH+NN+NN+HYPH+NN   (NML *)+*)
-		</code>
-		
-		However, it will keep index references intact (better: provide an ID column)<br/>
-		
-		when merging multiple lines, we replace the (non-first) * placeholder of *RETOK* lines with the original FORM		
-	*/
-	public void prune(Writer out, boolean useMerge, Set<Integer> dropCols) throws IOException {
+	Note: this is lossy for n:m matches, e.g.
+	 <code>
+	 a       DT      (NP (NP *       DT      (NP (NP *
+	 19-month        JJ      *       ?       ?
+	 cease-fire      NN      *)      CD+HYPH+NN+NN+HYPH+NN   (NML *)+*)
+	</code>
+	
+	However, it will keep index references intact (better: provide an ID column)<br/>
+	
+	when merging multiple lines, we replace the (non-first) * placeholder of *RETOK* lines with the original FORM		
+	 */
+	public void prune(Writer out, Set<Integer> dropCols) throws IOException {
 		StringWriter merged = new StringWriter();
-		if(useMerge) merge(merged,dropCols);
-		else split(merged,dropCols);
+		this.merge(merged,dropCols);
 		
 		// strategy: merge *RETOK*s with last token; if none available, merge with the next token
 		BufferedReader in = new BufferedReader(new StringReader(merged.toString()));
@@ -722,10 +305,26 @@ public class CoNLLAlign {
 		out.write(simplifyIOBES(lastLine)+"\n");
 		out.flush();
 	}
+
+	/** simplify IOBES annotations before merging lines in prune() */
+	protected static String simplifyIOBES(String line) {
+		try {
+			while(line.matches(".*\t[IB]-([^+]*)\\+I-\\1.*"))
+				line=line.replaceAll("\t([IB])-([^+]*)\\+I-\\2","\t$1-$2");
+			while(line.matches(".*\tB-([^+]*)\\+E-\\1.*"))
+				line=line.replaceAll("\tB-([^+]*)\\+E-\\1","\t$1");
+			while(line.matches(".*\tI-([^+]*)\\+E-\\1.*"))
+				line=line.replaceAll("\tI-([^+]*)\\+E-\\1","\tE-$1");
+		} catch (java.util.regex.PatternSyntaxException e) {
+			e.printStackTrace();
+			System.err.println("while processing \""+line+"\"");
+		}
+		return line;
+	}
 	
 	public static void main(String[] argv) throws Exception {
 		if(!Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-silent[,\\]].*")) {
-			System.err.println("synopsis: CoNLLAlign FILE1.tsv FILE2.tsv [COL1 COL2] [-silent] [-f] [-split] [-drop none | -drop COLx..z]\n"+
+			System.err.println("synopsis: CoNLLAlign FILE1.tsv FILE2.tsv [COL1 COL2] [-silent] [-f] [-split] [-lev] [-drop none | -drop COLx..z]\n"+
 				"extract the contents of the specified column, run diff\n"+
 				"and integrate the content of FILE1 and FILE2 on that basis\n"+
 				"(similar to sdiff, but optimized for CoNLL)");
@@ -737,6 +336,9 @@ public class CoNLLAlign {
 				"\t          suppresses *RETOK* nodes, thus keeping the token sequence intact\n"+
 				"\t-split    by default, the tokenization of the first file is adopted for the output\n"+
 				"\t          with this flag, split tokens from both files into longest common subtokens\n"+
+				"\t-lev      use relative Levenshtein distance with greedy decoding to resolve n:m matches\n"+
+				"\t          mutually exclusive with -split, should only be used when aligning text that is\n"+
+				"\t          not identical, but rather, similar, e.g., different editions of the same text\n"+
 				"\t-drop     drop specified FILE2 columns, by default, this includes COL2\n"+
 				"\t          default behavior can be suppressed by defining another set of columns\n"+
 				"\t          or -drop none");
@@ -751,6 +353,12 @@ public class CoNLLAlign {
 	
 		boolean force = Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-f[,\\]].*");
 		boolean split = Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-split[,\\]].*");
+		boolean lev = Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-lev[enshti]*[,\\]].*");
+
+		if(split && lev) {
+			System.err.println("warning: flags -lev and -split should not be combined, dropping -split");
+			split=false;
+		}
 		
 		HashSet<Integer> dropCols = new HashSet<Integer>();
 		if(!Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-drop[,\\]].*"))
@@ -765,32 +373,20 @@ public class CoNLLAlign {
 			} catch (NumberFormatException e) {}
 		}
 		
-		CoNLLAlign me = new CoNLLAlign(new File(argv[0]), new File(argv[1]),col1,col2);
-		if(force) {
-			me.prune(new OutputStreamWriter(System.out), !split, dropCols);
-		} else if(split) {
-			me.split(new OutputStreamWriter(System.out), dropCols);
-		} else 
-			me.merge(new OutputStreamWriter(System.out),dropCols);
-	}
-	
-	Vector<String[]> read(File file) throws IOException {
-		Vector<String[]> result = new Vector<String[]>();
-		BufferedReader in = new BufferedReader(new FileReader(file));
-		for(String line=in.readLine(); line!=null; line=in.readLine()) {
-			if(line.trim().startsWith("#")) 
-				result.add(new String[]{ line });
-			else 
-				result.add(line.replaceAll("[\t ]*$","").split(" *\t+ *"));
+		CoNLLAlign me;
+		
+		if(split) {
+			me = new CoNLLAlignSubTok(new File(argv[0]), new File(argv[1]),col1,col2);
+		} else if(lev){
+			me = new CoNLLAlignSimilarText(new File(argv[0]), new File(argv[1]),col1,col2);
+		} else {
+			me = new CoNLLAlign(new File(argv[0]), new File(argv[1]),col1,col2);
 		}
-		return result;
+		
+		if(force) {
+			me.prune(new OutputStreamWriter(System.out), dropCols);
+		} else {
+			me.merge(new OutputStreamWriter(System.out), dropCols);
+		}
 	}
-	
-	List<String> getCol(Vector<String[]> conll, int col) {
-		List<String> result = new ArrayList<String>();
-		for(int i = 0; i<conll.size(); i++)
-			if(conll.get(i).length==0) result.add(""); else result.add(conll.get(i)[col]);
-		return result;
-	}
-	
 }

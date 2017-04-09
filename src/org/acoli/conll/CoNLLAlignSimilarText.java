@@ -1,8 +1,13 @@
 package org.acoli.conll;
 
-import java.io.*;
-import java.util.*;
-import difflib.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.Writer;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.Vector;
+
+import difflib.Delta;
 
 
 /** adaptation of CoNLLAlign when working with massively restructured text, e.g., compiling
@@ -11,17 +16,12 @@ import difflib.*;
 	we use the established segments and add new links with the most similar unaligned string, using relative 
 	Levenshtein distance
 */
-public class CoNLLAlignWithLevenshtein extends CoNLLAlign {
+public class CoNLLAlignSimilarText extends CoNLLAlign {
 
-	public CoNLLAlignWithLevenshtein(File file1, File file2, int col1, int col2) throws IOException {
+	public CoNLLAlignSimilarText(File file1, File file2, int col1, int col2) throws IOException {
 		super(file1, file2, col1, col2);
 	}
 
-	/** shorthand for merge with token level alignment */	
-	public void merge(Writer out, Set<Integer> dropCols) throws IOException {
-		merge(out,dropCols, false);
-	}
-	
 	/** calculate Levenshtein distance, cf. https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#Java, CC-BY-SA */
 	public int levenshteinDistance (CharSequence lhs, CharSequence rhs) {                          
 		int len0 = lhs.length() + 1;                                                     
@@ -66,15 +66,14 @@ public class CoNLLAlignWithLevenshtein extends CoNLLAlign {
 	/** given two CoNLL files, perform token-level merge, 
 	 *  adopt the tokenization of the first (no subtokens, here)<br/>
 	 *  inserted words (tokenization mismatches) from the second are represented by "empty" PTB words prefixed with *RETOK*-...<br/>
-	 *  treatment of annotations follows CoNLLAlign
+	 *  treatment of annotations follows CoNLLAlign<br/>
+	 *  when identity matching fails, apply Levenshtein distance with greedy decoding, no crossing	
 	 **/
-	void merge(Writer out, Set<Integer> dropCols, boolean split) throws IOException {
+	void merge(Writer out, Set<Integer> dropCols) throws IOException {
 		int i = 0;
 		int j = 0;
 		int d = 0;
-		
-		if(split) System.err.println("split operation not supported");
-		
+				
 		boolean debug=false;
 
 		Vector<String[]> left = new Vector<String[]>();
@@ -127,6 +126,8 @@ public class CoNLLAlignWithLevenshtein extends CoNLLAlign {
 			} else { 																	// n:m replacements
 				d++;																	
 
+				/** BEGIN levenshtein modification **/
+				
 				// perform Levenshtein-based alignment among deltas
 				int[][] levMatrix = new int[delta.getOriginal().size()][delta.getRevised().size()];
 				double[][] relMatrix = new double[delta.getOriginal().size()][delta.getRevised().size()];;
@@ -199,16 +200,10 @@ public class CoNLLAlignWithLevenshtein extends CoNLLAlign {
 				}					
 			}
 			
+			/** END levenshtein modification **/
+			
 			// write left and right if at sentence break or at end
 			if(i>=conll1.size() || j>=conll2.size() || (forms1.get(i).trim().equals("") && forms2.get(j).trim().equals(""))) {
-				
-				if(split) {
-					left=undoIOBES4syntax(left);
-					right=undoIOBES4syntax(right);
-					
-					left=repairIOBES(left);
-					right=repairIOBES(right);
-				}
 				
 				write(left,right,dropCols,out);
 				left.clear();
@@ -294,40 +289,22 @@ public class CoNLLAlignWithLevenshtein extends CoNLLAlign {
 		
 		return relMatrix;
 	}
-
-	public static void main(String[] argv) throws Exception {
-		if(!Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-silent[,\\]].*")) {
-			System.err.println("synopsis: CoNLLAlignWithLevenshtein FILE1.tsv FILE2.tsv [COL1 COL2] [-silent] [-f] [-drop none | -drop COLx..z]\n"+
-				"extract the contents of the specified column, run diff\n"+
-				"and integrate the content of FILE1 and FILE2 on that basis\n"+
-				"(similar to sdiff, but optimized for CoNLL)");
-			if(argv.length==0) System.err.println("\tFILEi.tsv tab-separated text files, e.g. CoNLL format\n"+
-				"\tCOLi      column number to be used for the alignment,\n"+
-				"\t          defaults to 0 (first)\n"+
-				"\t-silent   suppress synopsis\n"+
-				"\t-drop     drop specified FILE2 columns, by default, nothing is dropped\n"+
-				"\t          (note that this is unlike CoNLLAlign)\n");
-		}
-		
-		int col1 = 0;
-		int col2 = 0;
-		try {
-			col1 = Integer.parseInt(argv[2]);
-			col2 = Integer.parseInt(argv[3]);
-		} catch (Exception e) {};
 	
-		HashSet<Integer> dropCols = new HashSet<Integer>();
-		
-		int i = 0;
-		while(i<argv.length && !argv[i].toLowerCase().equals("-drop"))
-			i++;
-		while(i<argv.length) {
-			try {
-				dropCols.add(Integer.parseInt(argv[i++]));
-			} catch (NumberFormatException e) {}
+	/** calls CoNLLAlign with additional flag -split, if -drop isn't specified, it is set to none (different default) */
+	public static void main(String[] argv) throws Exception {
+		Vector<String> args = new Vector<String>(Arrays.asList(argv));
+		boolean inserted = false;
+		for(int i = 0; i<args.size() && !inserted; i++) {
+			if(args.get(i).toLowerCase().startsWith("-drop")) {
+				args.insertElementAt("-lev", i);
+				inserted=true;
+			}
 		}
-		
-		CoNLLAlignWithLevenshtein me = new CoNLLAlignWithLevenshtein(new File(argv[0]), new File(argv[1]),col1,col2);
-		me.merge(new OutputStreamWriter(System.out),dropCols);
+		if(!inserted) {
+			args.add("-split");
+			args.add("-drop");
+			args.add("none");
+		}
+		CoNLLAlign.main(args.toArray(new String[args.size()]));
 	}
 }
