@@ -1,11 +1,13 @@
 # CoNLL
 Tools for manipulating CoNLL TSV and related formats
-* special focus on processing multi-layer corpora, including annotations with conflicting tokenizations
+* special focus on processing multi-layer corpora, including annotations with conflicting tokenizations and/or textual variations
 
 Subdirectories
 * cmd converters from different source formats to CoNLL
 * src java classes for manipulating CoNLL files, in particular a tokenization-independent merging routine
 * lib jars for src
+* data_nlp sample data for merging various linguistic and semantic annotations of the same text
+* data_phil sample data and pipeline for merging multiple versions of the same text (i.e., similar text)
 
 History
 * May 2009 version 0.1 ("PAULA merge", internal use only)
@@ -25,8 +27,13 @@ History
   is to separate application-specific and generic aspects of the 0.2 processing pipeline. Application-specific components are to be
   published at a later stage.
   The code for the merging and a number of converters is now published under an Apache license via Github. The release includes a
-  data sample (wsj_0655), which is, however, password protected for reasons of copyright. Contact us to check whether we can give you
-  access, alternatively, ask the LDC for file wsj_0655 in PTB3, PDTB2, RST-DTB, PDGB, OntoNotes, PropBank, NomBank.
+  data sample for an NLP/semantic annotation workflow (wsj_0655), which is, however, password protected for reasons of copyright. 
+  Contact us to check whether we can give you access, alternatively, ask the LDC for file wsj_0655 in PTB3, PDTB2, RST-DTB, PDGB, 
+  OntoNotes, PropBank, NomBank.
+* Apr 2017 version 0.31 ("CoNLL merge")
+  Code base partially restructured, with backward-compatible functionality and parameters. Added an philological use case (editions of
+  historical texts, see data_phil): New flag -lev for Levenshtein-based alignment (to be used when working with similar text rather
+  than different annotations of the same text).
 
 References
 * Chiarcos, C., Ritz, J. & Stede, M. (2009), By all these lovely tokens ... Merging conflicting tokenizations. In: Proceedings of the Third Linguistic Annotation Workshop (LAW-2009), held in conjunction with ACL-IJCNLP 2009, Suntec, Singapore, p. 35-43.

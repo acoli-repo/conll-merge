@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
@@ -64,10 +65,14 @@ public class CoNLLAlign {
 	/** given two CoNLL files, perform token-level merge using Myer's diff, adopt the tokenization of the first <br/>
 	 * tokenization mismatches from the second are represented by "empty" PTB words prefixed with *RETOK*-...
 	 */
-	void merge(Writer out, Set<Integer> dropCols) throws IOException {
+	void merge(Writer out, Set<Integer> dropCols, boolean force) throws IOException {
 		int i = 0;
 		int j = 0;
 		int d = 0;
+		
+		Writer myOut = out;
+		if(force)
+			myOut = new StringWriter();
 		
 		boolean debug=false;
 	
@@ -140,11 +145,14 @@ public class CoNLLAlign {
 			// write left and right if at sentence break or at end
 			if(i>=conll1.size() || j>=conll2.size() || (forms1.get(i).trim().equals("") && forms2.get(j).trim().equals(""))) {
 				
-				write(left,right,dropCols,out);
+				write(left,right,dropCols,myOut);
 				left.clear();
 				right.clear();
 			}
 		}
+		
+		if(force)
+			prune(out,new StringReader(myOut.toString()));
 	}
 	
 	/** internally called by merge() <br/>
@@ -250,12 +258,10 @@ public class CoNLLAlign {
 	
 	when merging multiple lines, we replace the (non-first) * placeholder of *RETOK* lines with the original FORM		
 	 */
-	public void prune(Writer out, Set<Integer> dropCols) throws IOException {
-		StringWriter merged = new StringWriter();
-		this.merge(merged,dropCols);
+	protected void prune(Writer out, Reader mergedIn) throws IOException {
 		
 		// strategy: merge *RETOK*s with last token; if none available, merge with the next token
-		BufferedReader in = new BufferedReader(new StringReader(merged.toString()));
+		BufferedReader in = new BufferedReader(mergedIn);
 		String lastLine = "";
 		for(String line = in.readLine(); line!=null; line=in.readLine()) {
 			if(line.trim().equals("")) {
@@ -383,10 +389,6 @@ public class CoNLLAlign {
 			me = new CoNLLAlign(new File(argv[0]), new File(argv[1]),col1,col2);
 		}
 		
-		if(force) {
-			me.prune(new OutputStreamWriter(System.out), dropCols);
-		} else {
-			me.merge(new OutputStreamWriter(System.out), dropCols);
-		}
+		me.merge(new OutputStreamWriter(System.out), dropCols, force);
 	}
 }

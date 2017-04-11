@@ -2,6 +2,8 @@ package org.acoli.conll;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Arrays;
 import java.util.List;
@@ -41,21 +43,20 @@ public class CoNLLAlignSubTok extends CoNLLAlign {
 		super(file,file2,col1,col2);
 	}
 
-	/** shorthand for merge() with split operation, for backward compatibility */
-	void split(Writer out, Set<Integer> dropCols) throws IOException {
-		merge(out, dropCols);
-	}
-	
 	/** given two CoNLL files, perform subtoken-level merge:
 	 * merge CoNLL files by splitting tokens into maximal common subtokens:
 	 * instead of enforcing one tokenization over another, split both tokenizations to minimal common strings and add this as a new first column
 	 * to the output<br/>
 	 * annotations are split according to IOBES (this may lead to nested IOBES prefixes that should be post-processed) */
-	void merge(Writer out, Set<Integer> dropCols) throws IOException {
+	void merge(Writer out, Set<Integer> dropCols, boolean force) throws IOException {
 		int i = 0;
 		int j = 0;
 		int d = 0;
 
+		Writer myOut = out;
+		if(force)
+			myOut = new StringWriter();
+		
 		// boolean split=true;
 		boolean debug=false;
 
@@ -170,11 +171,14 @@ public class CoNLLAlignSubTok extends CoNLLAlign {
 
 				/** END subtoken modification **/
 
-				write(left,right,dropCols,out);
+				write(left,right,dropCols,myOut);
 				left.clear();
 				right.clear();
 			}
 		}
+		
+		if(force)
+			prune(out,new StringReader(myOut.toString()));
 	}
 
 				

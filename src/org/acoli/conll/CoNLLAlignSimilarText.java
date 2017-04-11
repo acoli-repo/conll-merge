@@ -2,6 +2,8 @@ package org.acoli.conll;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Arrays;
 import java.util.Set;
@@ -69,11 +71,15 @@ public class CoNLLAlignSimilarText extends CoNLLAlign {
 	 *  treatment of annotations follows CoNLLAlign<br/>
 	 *  when identity matching fails, apply Levenshtein distance with greedy decoding, no crossing	
 	 **/
-	void merge(Writer out, Set<Integer> dropCols) throws IOException {
+	void merge(Writer out, Set<Integer> dropCols, boolean force) throws IOException {
 		int i = 0;
 		int j = 0;
 		int d = 0;
-				
+
+		Writer myOut = out;
+		if(force)
+			myOut = new StringWriter();
+
 		boolean debug=false;
 
 		Vector<String[]> left = new Vector<String[]>();
@@ -132,12 +138,14 @@ public class CoNLLAlignSimilarText extends CoNLLAlign {
 				int[][] levMatrix = new int[delta.getOriginal().size()][delta.getRevised().size()];
 				double[][] relMatrix = new double[delta.getOriginal().size()][delta.getRevised().size()];;
 				
-				for(int o=0; o<delta.getOriginal().size(); o++)
+				//DEBUG
+				/* for(int o=0; o<delta.getOriginal().size(); o++)
 					System.err.print(forms1.get(i+o)+"\t");
 				System.err.println();
 				for(int r = 0; r<delta.getRevised().size(); r++)
 					System.err.print(forms2.get(j+r)+"\t");
 				System.err.println();
+				*/
 				
 				for(int o=0; o<delta.getOriginal().size(); o++)
 					for(int r = 0; r<delta.getRevised().size(); r++) {
@@ -205,11 +213,13 @@ public class CoNLLAlignSimilarText extends CoNLLAlign {
 			// write left and right if at sentence break or at end
 			if(i>=conll1.size() || j>=conll2.size() || (forms1.get(i).trim().equals("") && forms2.get(j).trim().equals(""))) {
 				
-				write(left,right,dropCols,out);
+				write(left,right,dropCols,myOut);
 				left.clear();
 				right.clear();
 			}
 		}
+		if(force)
+			prune(out,new StringReader(myOut.toString()));
 	}
 
 	/** greedy non-crossing alignment decoding for a distance matrix: 
@@ -221,14 +231,15 @@ public class CoNLLAlignSimilarText extends CoNLLAlign {
 		if(relMatrix.length<1 || relMatrix[0].length<1) return relMatrix;
 		
 		
-		System.err.println("decode("+relMatrix.length+"x"+relMatrix[0].length+", "+weights1.length+", "+weights2.length+")");
+		// DEBUG
+		/* System.err.println("decode("+relMatrix.length+"x"+relMatrix[0].length+", "+weights1.length+", "+weights2.length+")");
 
 		System.err.println("decode() in ");
 		for(int i = 0; i<relMatrix.length; i++) {
 			for(int j = 0; j<relMatrix[i].length; j++)
 				System.err.print(relMatrix[i][j]+"\t");
 			System.err.println();
-		}
+		}*/
 		
 		int maxI = 0;
 		int maxJ = 0;
@@ -248,7 +259,8 @@ public class CoNLLAlignSimilarText extends CoNLLAlign {
 				}
 			}
 
-		System.err.println("max "+maxI+" "+maxJ);
+		// DEBUG
+		// System.err.println("max "+maxI+" "+maxJ);
 		
 		// remove crossing edges
 		for(int i = 0; i<relMatrix.length; i++)
@@ -280,12 +292,13 @@ public class CoNLLAlignSimilarText extends CoNLLAlign {
 					relMatrix[i][j]=rectangle[i-maxI-1][j-maxJ-1];
  		}
 		
-		System.err.println("decode() out ");
+		// DEBUG
+		/* System.err.println("decode() out ");
 		for(int i = 0; i<relMatrix.length; i++) {
 			for(int j = 0; j<relMatrix[i].length; j++)
 				System.err.print(relMatrix[i][j]+"\t");
 			System.err.println();
-		}
+		}*/
 		
 		return relMatrix;
 	}
