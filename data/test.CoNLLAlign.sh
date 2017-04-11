@@ -8,7 +8,7 @@ FILES2=conll/*conll;
 
 if echo $OSTYPE | grep -i 'cygwin' >&/dev/null; then PATH_SEPARATOR=';'; fi;
 if 
-	javac -classpath ../src/$PATH_SEPARATOR../lib/diffutils-1.2.1.jar ../src/org/acoli/conll/CoNLLAlign.java;
+	javac -classpath ../src/$PATH_SEPARATOR../lib/diffutils-1.2.1.jar ../src/org/acoli/conll/*java;
 then
 		mkdir merge >& /dev/null;
 		for file1 in $FILES1; do
