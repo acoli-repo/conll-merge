@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="2.0">
 
-    <!-- convert FrameNet annotations as produced by Semafor to CoNLL-like column format, cf. http://www.cs.cmu.edu/~ark/SEMAFOR/README -->
+    <!-- convert FrameNet SRL annotations as produced by Semafor (http://www.cs.cmu.edu/~ark/SEMAFOR/README) to PropBank-like CoNLL format -->
     <xsl:output method="text"/>
     
     <xsl:template match="/">
-        <!--xsl:text># ID&#9;</xsl:text-->
             <xsl:text>WORD&#9;FRAME&#9;FRAME-ARGs&#10;&#10;</xsl:text>
         <xsl:for-each select="//sentence">
             <xsl:variable name="sentence" select="." as="node()*"/>
@@ -32,7 +31,8 @@
                      identify a token that serves as their anchor (cf. PropBank predicates).
                      Here, this is last token of the first target (FE), for nominals,
                      this is likely the syntactic head.
-                     Unlike PropBank, we permit multiple targets in the same cell, separated by whitespace
+                     Unlike PropBank, we do not rule out permit multiple targets in the same cell, separated by whitespace.
+                     In practice, this does, however, not occur.
                 -->
                 <xsl:variable name="targets">
                     <xsl:variable name="tmp">
@@ -83,7 +83,6 @@
                                     </xsl:when>
                                     <xsl:when test="number(@start)&lt;number($start) and number(@end)&gt;number($end)">
                                         <xsl:value-of select="concat('I-',$annotation)"/>
-                                        <!--xsl:value-of select="concat('(',@start,'&lt;',$start,' and ',@end,'&gt;',$end,')')"/-->
                                     </xsl:when>
                                 </xsl:choose>
                                 <xsl:text> </xsl:text>
@@ -100,13 +99,7 @@
                     </xsl:for-each>
                 </xsl:variable>
                 
-                <!--xsl:value-of select="$id"/>
-                <xsl:text>&#9;</xsl:text-->
                 <xsl:value-of select="."/>
-                <!--xsl:text>&#9;</xsl:text>
-                <xsl:value-of select="$start"/>
-                <xsl:text>-</xsl:text>
-                <xsl:value-of select="$end"/-->
                 <xsl:text>&#9;</xsl:text>
                 <xsl:value-of select="$targets"/>
                 <xsl:value-of select="$args"/>
