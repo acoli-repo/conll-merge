@@ -32,7 +32,7 @@
     <!-- dependencies types -->
     <!-- not a parameter, but determined from the first sentence.
     we assume this is possible in this case because the levels of syntactic annotation are the same all over, whereas token-level annotations may have gaps -->
-    <xsl:variable name="dependencyTypes" select="//dependencies[1]/../dependencies/@type"/>
+    <xsl:variable name="dependencyTypes" select="(//dependencies)[1]/../dependencies/@type"/>
     
     <xsl:template match="/">
         <!-- header -->
@@ -61,27 +61,6 @@
             <xsl:if test="position()>1">
                 <xsl:value-of select="position()"/>
             </xsl:if>
-            
-            <!-- CamelCase reformatting for brevity, but still rather unreadable -->
-            <!--xsl:variable name="camelCased">
-                <xsl:variable name="tmp" select="replace(concat('_',.),'[^a-zA-Z0-9]+','_')"/>
-                <xsl:value-of select="
-                    string-join(
-                                (for  $i in 1 to count(tokenize($tmp,'_')),
-                                      $s in tokenize($tmp,'_')[$i],
-                                      $fl in substring($s,1,1),
-                                      $tail in substring($s,2)
-                                 return
-                                      if($i eq 1)
-                                      then $s
-                                      else concat(upper-case($fl), $tail)
-                                 ),
-                                 '')"/>
-            </xsl:variable>
-            <xsl:text>&#9;HEAD</xsl:text>
-            <xsl:value-of select="$camelCased"/>
-            <xsl:text>&#9;EDGE</xsl:text>
-            <xsl:value-of select="$camelCased"/-->
         </xsl:for-each>
         
         <!-- coreference -->
@@ -127,25 +106,26 @@
             <xsl:text>&#10;</xsl:text>
             
             <!-- preprocess sentence-level annotations, i.e., parse -->
-            <!-- original parse -->
-            <xsl:variable name="parse" select="./parse/text()"/>
+            <xsl:variable name="parse" select="./parse/text()"/>   <!-- original parse -->
             
-            <!-- replace every terminal node with a * -->
-            <!-- this is tricky because the parse might contain * as a word or as an empty element, so "our" * are the only ones surrounded by spaces -->
-            <xsl:variable name="starParse"
-                select="
-                replace(
-                replace(
-                replace(
-                normalize-space($parse),
-                '[*] +\)','*)'),
-                ' +[*] ','* '),
-                '\([^\(\)*]*\)',' * ')"/>
+            <xsl:variable name="starParse">  <!-- replace every terminal node with a * -->
+                <!-- this is tricky because the parse might contain * as a word or as an 
+                     empty element, so "our" * are the only ones surrounded by spaces -->
+                <xsl:value-of select="
+                    replace(
+                        replace(
+                            replace(
+                                normalize-space($parse),
+                                '[*] +\)','*)'),
+                            ' +[*] ','* '),
+                            '\([^\(\)*]*\)',' * ')"/>
+            </xsl:variable>
+            
+            <xsl:variable name="splitParse">  <!-- we break the parse tree at every token -->    
+                <xsl:value-of select="tokenize($starParse,' \* ')"/> 
+            </xsl:variable>
 
-            <!-- we break the parse tree at every empty element -->
-            <xsl:variable name="splitParse" select="tokenize($starParse,' \* ')"/>
-
-            <!-- annotate one token per line -->            
+            <!-- annotate one token per line -->
             <xsl:for-each select="tokens/token">
                 <xsl:variable name="token" select="." as="node()*"/>
                 
