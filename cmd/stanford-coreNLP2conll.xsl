@@ -121,10 +121,6 @@
                             '\([^\(\)*]*\)',' * ')"/>
             </xsl:variable>
             
-            <xsl:variable name="splitParse">  <!-- we break the parse tree at every token -->    
-                <xsl:value-of select="tokenize($starParse,' \* ')"/> 
-            </xsl:variable>
-
             <!-- annotate one token per line -->
             <xsl:for-each select="tokens/token">
                 <xsl:variable name="token" select="." as="node()*"/>
@@ -148,20 +144,23 @@
                 <!-- phrase structure parse tree -->
                 <!-- The parse is given as a plain string in accorance to the PTB mrg notation (terminal nodes include POS and WORD. This is decomposed into the word-based notation used since CoNLL-2005.-->
                  <xsl:if test="exists(//parse)">
-                     <xsl:variable name="me"
-                     select="$splitParse[position()=count($token[1]/preceding-sibling::token)+1]"/>
-                     <xsl:variable name="next"                         select="$splitParse[position()=count($token[1]/preceding-sibling::token)+2]"/>
                      <xsl:text>&#9;</xsl:text>
-                     <xsl:variable name="syntax">
-                         <xsl:value-of select="replace($me,'^[\) ]+','')"/>
-                         <xsl:text> *</xsl:text>
-                         <xsl:value-of select="replace($next,'[^\) ].*','')"/>
-                     </xsl:variable>
-                     <xsl:value-of select="normalize-space($syntax)"/>
-                     <xsl:if test="normalize-space($syntax)=''">
-                         <!-- shouldn't happen -->
-                         <xsl:text>_</xsl:text>
-                     </xsl:if>
+                     <xsl:choose>
+                         <xsl:when test="normalize-space($parse)=''">
+                             <xsl:text>_</xsl:text>
+                         </xsl:when>
+                         <xsl:otherwise>
+                             <xsl:variable name="me"
+                             select="tokenize($starParse,' \* ')[position()=count($token[1]/preceding-sibling::token)+1]"/>
+                             <xsl:variable name="next"  select="tokenize($starParse,' \* ')[position()=count($token[1]/preceding-sibling::token)+2]"/>
+                             <xsl:variable name="syntax">
+                                 <xsl:value-of select="replace($me,'^[\) ]+','')"/>
+                                 <xsl:text> *</xsl:text>
+                                 <xsl:value-of select="replace($next,'[^\) ].*','')"/>
+                             </xsl:variable>
+                             <xsl:value-of select="normalize-space($syntax)"/>
+                         </xsl:otherwise>
+                     </xsl:choose>
                 </xsl:if>
                 
                 <!-- dependency annotations -->
@@ -199,7 +198,7 @@
                     <xsl:variable name="coreference">
                         <xsl:for-each select="./ancestor::document/coreference/coreference/mention[sentence/text()=$sentenceId][head/text()=$token[1]/@id]">
                             <xsl:text>(</xsl:text>
-                            <xsl:value-of select="count(../preceding-sibling::coreference)+1"/>
+                            <xsl:value-of select="count(./preceding::coreference)+1"/>
                             <xsl:text>) </xsl:text>
                         </xsl:for-each>
                     </xsl:variable>
