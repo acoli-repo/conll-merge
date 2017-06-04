@@ -211,7 +211,7 @@
                     <xsl:variable name="coreference-representative">
                         <xsl:for-each select="./ancestor::document/coreference/coreference/mention[@representative][sentence/text()=$sentenceId][head/text()=$token[1]/@id]">
                             <xsl:text>(gov </xsl:text>
-                            <xsl:value-of select="count(../preceding-sibling::coreference)+1"/>
+                            <xsl:value-of select="count(../preceding::coreference)+1"/>
                             <xsl:text>) </xsl:text>
                         </xsl:for-each>
                     </xsl:variable>
