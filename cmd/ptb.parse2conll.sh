@@ -5,6 +5,7 @@
 cat $* | \
 iconv -f utf-8 -t utf-8 -c | \
 perl -pe '
+	s/\t/    /g;								# TAB > 4 spaces (tab is special character in CoNLL)
 	s/\n/ /g; 									# one sentence per line
 	s/^(\()/\n$1/;
 ' | \
