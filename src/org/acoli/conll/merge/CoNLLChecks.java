@@ -1,4 +1,4 @@
-package org.acoli.conll;
+package org.acoli.conll.merge;
 
 import java.io.BufferedReader;
 import java.io.FileReader;

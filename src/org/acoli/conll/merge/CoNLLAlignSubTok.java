@@ -1,4 +1,4 @@
-package org.acoli.conll;
+package org.acoli.conll.merge;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,7 +48,7 @@ public class CoNLLAlignSubTok extends CoNLLAlign {
 	 * instead of enforcing one tokenization over another, split both tokenizations to minimal common strings and add this as a new first column
 	 * to the output<br/>
 	 * annotations are split according to IOBES (this may lead to nested IOBES prefixes that should be post-processed) */
-	void merge(Writer out, Set<Integer> dropCols, boolean force) throws IOException {
+	public void merge(Writer out, Set<Integer> dropCols, boolean force) throws IOException {
 		int i = 0;
 		int j = 0;
 		int d = 0;

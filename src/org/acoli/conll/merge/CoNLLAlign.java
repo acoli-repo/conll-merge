@@ -1,4 +1,4 @@
-package org.acoli.conll;
+package org.acoli.conll.merge;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -33,8 +33,8 @@ public class CoNLLAlign {
 	protected final int col2;
 	
 	public CoNLLAlign(File file1, File file2, int col1, int col2) throws IOException {
-		conll1=read(file1);
-		conll2=read(file2);
+		conll1=readCoNLL(file1);
+		conll2=readCoNLL(file2);
 		this.col1=col1;
 		this.col2=col2;
 		forms1 = getCol(conll1,col1);
@@ -42,7 +42,8 @@ public class CoNLLAlign {
 		deltas = DiffUtils.diff(forms1, forms2).getDeltas();		
 	}
 
-	Vector<String[]> read(File file) throws IOException {
+	/** read and split a CoNLL file */  
+	protected static Vector<String[]> readCoNLL(File file) throws IOException {
 		Vector<String[]> result = new Vector<String[]>();
 		BufferedReader in = new BufferedReader(new FileReader(file));
 		for(String line=in.readLine(); line!=null; line=in.readLine()) {
@@ -65,7 +66,7 @@ public class CoNLLAlign {
 	/** given two CoNLL files, perform token-level merge using Myer's diff, adopt the tokenization of the first <br/>
 	 * tokenization mismatches from the second are represented by "empty" PTB words prefixed with *RETOK*-...
 	 */
-	void merge(Writer out, Set<Integer> dropCols, boolean force) throws IOException {
+	public void merge(Writer out, Set<Integer> dropCols, boolean force) throws IOException {
 		int i = 0;
 		int j = 0;
 		int d = 0;
@@ -330,24 +331,31 @@ public class CoNLLAlign {
 	
 	public static void main(String[] argv) throws Exception {
 		if(!Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-silent[,\\]].*")) {
-			System.err.println("synopsis: CoNLLAlign FILE1.tsv FILE2.tsv [COL1 COL2] [-silent] [-f] [-split] [-lev] [-drop none | -drop COLx..z]\n"+
+			System.err.println("synopsis: CoNLLAlign FILE1.tsv FILE2.tsv [COL1 COL2] [-silent] [-f] [-split] [-lev] [-giza GIZAOPTs] [-drop none | -drop COLx..z]\n"+
 				"extract the contents of the specified column, run diff\n"+
 				"and integrate the content of FILE1 and FILE2 on that basis\n"+
 				"(similar to sdiff, but optimized for CoNLL)");
-			if(argv.length==0) System.err.println("\tFILEi.tsv tab-separated text files, e.g. CoNLL format\n"+
-				"\tCOLi      column number to be used for the alignment,\n"+
-				"\t          defaults to 0 (first)\n"+
-				"\t-silent   suppress synopsis\n"+
-				"\t-f        forced merge: mismatching FILE2 tokens are merged with last FILE1 token (lossy)\n"+
-				"\t          suppresses *RETOK* nodes, thus keeping the token sequence intact\n"+
-				"\t-split    by default, the tokenization of the first file is adopted for the output\n"+
-				"\t          with this flag, split tokens from both files into longest common subtokens\n"+
-				"\t-lev      use relative Levenshtein distance with greedy decoding to resolve n:m matches\n"+
-				"\t          mutually exclusive with -split, should only be used when aligning text that is\n"+
-				"\t          not identical, but rather, similar, e.g., different editions of the same text\n"+
-				"\t-drop     drop specified FILE2 columns, by default, this includes COL2\n"+
-				"\t          default behavior can be suppressed by defining another set of columns\n"+
-				"\t          or -drop none");
+			if(argv.length==0) System.err.println(
+				"\tFILEi.tsv  tab-separated text files, e.g. CoNLL format\n"+
+				"\tCOLi       column number to be used for the alignment,\n"+
+				"\t           defaults to 0 (first)\n"+
+				"\t-silent    suppress synopsis\n"+
+				"\t-f         forced merge: mismatching FILE2 tokens are merged with last FILE1 token (lossy)\n"+
+				"\t           suppresses *RETOK* nodes, thus keeping the token sequence intact\n"+
+				"\t-split     by default, the tokenization of the first file is adopted for the output\n"+
+				"\t           with this flag, split tokens from both files into longest common subtokens\n"+
+				"\t-lev       use relative Levenshtein distance with greedy decoding to resolve n:m matches\n"+
+				"\t           mutually exclusive with -split, should only be used when aligning text that is\n"+
+				"\t           not identical, but rather, similar, e.g., different editions of the same text\n"+
+				"\t-giza      perform alignment using a precompiled GIZA++ Viterbi Alignment (*.A3.final)\n"+
+				"\t GIZAOPTS: A3 [ti [-azig A3 [ti]]] ...\n"+
+				"\t   -giza   A3 and ti arguments for aligning FILE1.tsv with FILE2.tsv\n"+
+				"\t   -azig   A3 and ti arguments for aligning FILE2.tsv with FILE1.tsv (optional)\n"+
+				"\t        A3 human-readable GIZA++ Viterbi alignment (*.A3.final, NOT *.a3.final)\n"+
+				"\t        ti human-readable translation table (*.actual.ti.final, optional)\n"+
+				"\t-drop      drop specified FILE2 columns, by default, this includes COL2\n"+
+				"\t           default behavior can be suppressed by defining another set of columns\n"+
+				"\t           or -drop none");
 		}
 		
 		int col1 = 0;
@@ -360,12 +368,38 @@ public class CoNLLAlign {
 		boolean force = Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-f[,\\]].*");
 		boolean split = Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-split[,\\]].*");
 		boolean lev = Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-lev[enshti]*[,\\]].*");
-
+		boolean giza = Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-giza .*");
+		File src2tgtText = null;
+		File tgt2srcText = null;
+		File src2tgtDict = null;
+		File tgt2srcDict = null;
+		
+		if(giza) {
+			int i = 0;
+			while(i<argv.length && !argv[i].toLowerCase().equals("-giza"))
+				i++;
+			src2tgtText = new File(argv[++i]);
+			if(i+1<argv.length) {
+				src2tgtDict = new File(argv[i+1]);
+				if(!src2tgtDict.exists()) {
+					src2tgtDict=null;
+				} else i++;
+			}
+			if(i+2<argv.length && argv[i].toLowerCase().equals("-azig")) {
+				tgt2srcText = new File(argv[++i]);
+				if(i+1<argv.length) {
+					tgt2srcDict = new File(argv[i+1]);
+					if(!tgt2srcDict.exists())
+						tgt2srcDict=null;
+				}
+			}
+		}
+		
 		if(split && lev) {
 			System.err.println("warning: flags -lev and -split should not be combined, dropping -split");
 			split=false;
 		}
-		
+				
 		HashSet<Integer> dropCols = new HashSet<Integer>();
 		if(!Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-drop[,\\]].*"))
 			dropCols.add(col2);
@@ -385,7 +419,10 @@ public class CoNLLAlign {
 			me = new CoNLLAlignSubTok(new File(argv[0]), new File(argv[1]),col1,col2);
 		} else if(lev){
 			me = new CoNLLAlignSimilarText(new File(argv[0]), new File(argv[1]),col1,col2);
-		} else {
+		} else /* if(giza) {
+			me = new CoNLLAlignGIZA(new File(argv[0]), new File(argv[1]),col1,col2,
+					src2tgtText, tgt2srcText, src2tgtDict, tgt2srcDict);
+		} else */ {
 			me = new CoNLLAlign(new File(argv[0]), new File(argv[1]),col1,col2);
 		}
 		

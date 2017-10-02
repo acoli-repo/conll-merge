@@ -9,7 +9,7 @@ echo '  CoNLLAlignFlags see CoNLLAlign for options (other than files)' 1>&2;
 # prep #
 ########
 
-CoNLLAlign=org/acoli/conll/CoNLLAlign;
+CoNLLAlign=org/acoli/conll/merge/CoNLLAlign;
 
 HOME=`echo $0 | sed s/'\/[^\/]*$'/'\/'/`./;
 HOME=`cd $HOME; pwd`;

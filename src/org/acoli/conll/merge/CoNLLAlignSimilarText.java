@@ -1,4 +1,4 @@
-package org.acoli.conll;
+package org.acoli.conll.merge;
 
 import java.io.File;
 import java.io.IOException;
@@ -71,7 +71,7 @@ public class CoNLLAlignSimilarText extends CoNLLAlign {
 	 *  treatment of annotations follows CoNLLAlign<br/>
 	 *  when identity matching fails, apply Levenshtein distance with greedy decoding, no crossing	
 	 **/
-	void merge(Writer out, Set<Integer> dropCols, boolean force) throws IOException {
+	public void merge(Writer out, Set<Integer> dropCols, boolean force) throws IOException {
 		int i = 0;
 		int j = 0;
 		int d = 0;
