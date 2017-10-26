@@ -74,16 +74,23 @@ if [ $STATUS = 'ok' ]; then
 		TMP=`cygpath -wa $TMP | perl -pe 's/\n//g;'`;
 	fi;
 
-	SPLIT=`echo $* | sed s/'.*\(-split\).*'/'\1'/g | grep split`
-	DROPCOLS=`echo $* | sed s/'.*\(-drop.*\)$'/'\1'/g | grep drop`
-	F=`echo $* | sed s/'.*\(-f\)[ \t].*'/'\1'/g | grep '\-f'`
+	# SPLIT=`echo $* | sed s/'.*\(-split\).*'/'\1'/g | grep split`
+	# DROPCOLS=`echo $* | sed s/'.*\(-drop.*\)$'/'\1'/g | grep drop`
+	# F=`echo $* | sed s/'.*\(-f\)[ \t].*'/'\1'/g | grep '\-f'`
 	
-	for file in $*; do
+	FILES=`for file in $*; do
+		if [ -e $file ]; then echo $file; fi
+		done;`
+	ARGS=`for arg in $*; do
+		if [ -e $arg ]; then echo >&/dev/null; else echo $arg; fi;
+		done;`;
+
+	for file in $FILES; do
 		if [ $file != $1 ]; then
 			if [ -s $file ]; then
 				echo 1>&2;
 				echo add $file 1>&2;
-				java -cp $CLASSPATH $CoNLLAlign $TMP $file -silent $SPLIT $F $DROPCOLS > $TMP2;
+				java -cp $CLASSPATH $CoNLLAlign $TMP $file $ARGS -silent > $TMP2;
 				mv $TMP2 $TMP_U;
 			fi;
 		fi;
