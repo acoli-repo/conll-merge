@@ -59,7 +59,7 @@ public class CoNLLAlign {
 	List<String> getCol(Vector<String[]> conll, int col) {
 		List<String> result = new ArrayList<String>();
 		for(int i = 0; i<conll.size(); i++)
-			if(conll.get(i).length==0) result.add(""); else result.add(conll.get(i)[col]);
+			if(conll.get(i).length>=col) result.add(""); else result.add(conll.get(i)[col]);
 		return result;
 	}
 	
