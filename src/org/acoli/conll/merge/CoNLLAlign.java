@@ -61,7 +61,7 @@ public class CoNLLAlign {
 		List<String> result = new ArrayList<String>();
 		for(int i = 0; i<conll.size(); i++)
 			if(conll.get(i).length==0) result.add(""); 
-			else if(conll.get(i).length>=col) result.add("_");
+			else if(conll.get(i).length<=col) result.add("");
 			else result.add(conll.get(i)[col]);
 		return result;
 	}
@@ -334,7 +334,7 @@ public class CoNLLAlign {
 	
 	public static void main(String[] argv) throws Exception {
 		if(!Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-silent[,\\]].*")) {
-			System.err.println("synopsis: CoNLLAlign FILE1.tsv FILE2.tsv [COL1 COL2] [-silent] [-f] [-split] [-lev] [-giza GIZAOPTs] [-drop none | -drop COLx..z]\n"+
+			System.err.println("synopsis: CoNLLAlign FILE1.tsv FILE2.tsv [COL1 COL2] [-silent] [-f] [-split] [-lev] "+/*[-giza GIZAOPTs] */"[-drop none | -drop COLx..z]\n"+
 				"extract the contents of the specified column, run diff\n"+
 				"and integrate the content of FILE1 and FILE2 on that basis\n"+
 				"(similar to sdiff, but optimized for CoNLL)");
@@ -350,12 +350,12 @@ public class CoNLLAlign {
 				"\t-lev       use relative Levenshtein distance with greedy decoding to resolve n:m matches\n"+
 				"\t           mutually exclusive with -split, should only be used when aligning text that is\n"+
 				"\t           not identical, but rather, similar, e.g., different editions of the same text\n"+
-				"\t-giza      perform alignment using a precompiled GIZA++ Viterbi Alignment (*.A3.final)\n"+
+				/*"\t-giza      perform alignment using a precompiled GIZA++ Viterbi Alignment (*.A3.final)\n"+
 				"\t GIZAOPTS: A3 [ti [-azig A3 [ti]]] ...\n"+
 				"\t   -giza   A3 and ti arguments for aligning FILE1.tsv with FILE2.tsv\n"+
 				"\t   -azig   A3 and ti arguments for aligning FILE2.tsv with FILE1.tsv (optional)\n"+
 				"\t        A3 human-readable GIZA++ Viterbi alignment (*.A3.final, NOT *.a3.final)\n"+
-				"\t        ti human-readable translation table (*.actual.ti.final, optional)\n"+
+				"\t        ti human-readable translation table (*.actual.ti.final, optional)\n"+*/
 				"\t-drop      drop specified FILE2 columns, by default, this includes COL2\n"+
 				"\t           default behavior can be suppressed by defining another set of columns\n"+
 				"\t           or -drop none");
@@ -371,13 +371,13 @@ public class CoNLLAlign {
 		boolean force = Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-f[,\\]].*");
 		boolean split = Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-split[,\\]].*");
 		boolean lev = Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-lev[enshti]*[,\\]].*");
-		boolean giza = Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-giza .*");
+		// boolean giza = Arrays.asList(argv).toString().toLowerCase().matches(".*[\\[,] *-giza .*");
 		File src2tgtText = null;
 		File tgt2srcText = null;
 		File src2tgtDict = null;
 		File tgt2srcDict = null;
 		
-		if(giza) {
+		/*if(giza) {
 			int i = 0;
 			while(i<argv.length && !argv[i].toLowerCase().equals("-giza"))
 				i++;
@@ -396,7 +396,7 @@ public class CoNLLAlign {
 						tgt2srcDict=null;
 				}
 			}
-		}
+		}*/
 		
 		if(split && lev) {
 			System.err.println("warning: flags -lev and -split should not be combined, dropping -split");
