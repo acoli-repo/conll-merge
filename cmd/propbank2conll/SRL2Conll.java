@@ -6,7 +6,7 @@ import org.w3c.dom.*;
 
 public class SRL2Conll {
 	public static void main(String[] argv) throws Exception {
-		System.err.println("SRL2Conll SRL CoNLL\n"+
+		System.err.println("SRL2Conll SRL CoNLL [-rem-link]\n"+
 			"read SRL data (as produced by normalize-propbank.sh+splitter.sh, etc.) from SRL, apply it to (PTB-)CoNLL files\n"+
 			"both files have to refer to the same text\n"+
 			"note that the CoNLL file *must* be a PTB (mrg) conll file incl. PTB parse, PTB empty elements, \n"+
@@ -59,6 +59,29 @@ public class SRL2Conll {
 				if(sent2pred2anno.get(sent)==null) sent2pred2anno.put(sent, new Hashtable<Integer,String>());
 				int pred = Integer.parseInt(anno[1]);
 				sent2pred2anno.get(sent).put(pred,anno[2]);
+				
+				
+				//***START Completely remove LINK-PCR/SLC and replace them by actual ARG
+				//***      e.g. 6:0-ARG1 0:2*6:0-LINK-PCR  --> 6:0-ARG1 0:2*6:0-ARG1
+				if (argv.length > 2) if (argv[2].equals("-rem-link")) {
+					for(int i = 3; i<anno.length; i++) {
+						String role1=anno[i].replaceFirst("^[^\\-]*\\-","");
+						if (role1.equals("LINK-PCR") || role1.equals("LINK-SLC")) {
+							String searchString=anno[i].replaceFirst(".*\\*","").replaceFirst("\\-.*","");
+							for(int j = 3; j<anno.length; j++) {
+								String role2=anno[j].replaceFirst("^[^\\-]*\\-","");
+								if (!role2.equals("LINK-PCR") && !role2.equals("LINK-SLC")
+									&& anno[j].contains(searchString)) {
+									anno[i] = anno[i].replaceFirst(role1, role2);
+								}
+							}
+						}
+					}
+				}
+				
+				//***END 
+				
+				
 				for(int i = 3; i<anno.length; i++) {
 					String role=anno[i].replaceFirst("^[^\\-]*\\-","");
 					String[] addresses=anno[i].replaceFirst("\\-.*","").split("[\\*,]"); // we annotate empty elements and discontinuous spans
@@ -71,7 +94,16 @@ public class SRL2Conll {
 						for(int n = 0; n<span.getLength(); n++) {
 							word=Integer.parseInt(span.item(n).getNodeValue());
 							if(sent2word2pred2anno.get(sent).get(word)==null) sent2word2pred2anno.get(sent).put(word, new Hashtable<Integer,String>());
-							sent2word2pred2anno.get(sent).get(word).put(pred,role);
+							String role_old = sent2word2pred2anno.get(sent).get(word).get(pred);
+							//prioritize other ARGs over LINK-PCR/SLC
+							if (role_old == null) {
+								sent2word2pred2anno.get(sent).get(word).put(pred,role);
+							} else if (role_old.equals("LINK-PCR") || role_old.equals("LINK-SLC")) {
+								sent2word2pred2anno.get(sent).get(word).put(pred,role);
+							} else if (role.equals("LINK-PCR") || role.equals("LINK-SLC")) {
+								//do nothing. do not overwrite existing ARGs
+							}
+							
 							System.err.print(".");
 						}
 					}

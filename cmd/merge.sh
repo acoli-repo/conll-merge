@@ -82,7 +82,7 @@ if [ $STATUS = 'ok' ]; then
 		if [ -e $file ]; then echo $file; fi
 		done;`
 	ARGS=`for arg in $*; do
-		if [ -e $arg ]; then echo >&/dev/null; else echo $arg; fi;
+		if [ -e $arg ] || [ $arg = '--' ]; then echo >&/dev/null; else echo $arg; fi;
 		done;`;
 
 	for file in $FILES; do
