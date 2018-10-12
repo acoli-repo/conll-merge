@@ -1,0 +1,14 @@
+The adequate acronym for the current edition (0.31, April 2017) is "CoNLL-Merge".
+Together, CoNLL-Merge and CoNLL-RDF constitute the ACoLi CoNLL libraries. CoNLL-Merge allows to merge TSV files with concurrent annotations, CoNLL-RDF parses TSV files into annotation graphs and allows for their flexible transformation.
+
+In scientific publications, please attribute by giving reference to *both* following publications:
+
+(1) Chiarcos, Christian, Julia Ritz, and Manfred Stede (2012), By all these lovely tokens ... Merging conflicting tokenizations. Journal of Language Resources & Evaluation 46(1):53-74.
+
+(2) Chiarcos, Christian, and Niko Schenk (2018), The ACoLi CoNLL Libraries: Beyond Tab-Separated Values, In: <i>Proceedings of the Eleventh International Conference on Language Resources and Evaluation (LREC 2018), Miyazaki, Japan, May 7-12, 2018, p.571-576.
+
+From these, the first describes the concept of CoNLL-Merge, the second describes the implementation as part of the ACoLi CoNLL libraries.
+
+For other forms of usage and redistribution, please refer to https://github.com/acoli-repo/conll and keep/extend this note.
+
+Christian Chiarcos, chiarcos@informatik.uni-frankfurt.de
