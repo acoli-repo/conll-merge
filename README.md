@@ -38,7 +38,7 @@ History
   The code for the merging and a number of converters is now published under an Apache license via Github. The release includes a  data sample for an NLP/semantic annotation workflow (wsj_0655), which is, however, password protected for reasons of copyright.   Contact us to check whether we can give you access, alternatively, ask the LDC for file wsj_0655 in PTB3, PDTB2, RST-DTB, PDGB, 
   OntoNotes, PropBank, NomBank.
 * Apr 2017 version 0.31 ("CoNLL merge")
-  Code base partially restructured, with backward-compatible functionality and parameters. Added an philological use case (editions of   historical texts, see data_phil): New flag -lev for Levenshtein-based alignment (to be used when working with similar text rather   than different annotations of the same text).
+  Code base partially restructured, with backward-compatible functionality and parameters. Added a philological use case (editions of   historical texts, see data_phil): New flag -lev for Levenshtein-based alignment (to be used when working with similar text rather   than different annotations of the same text).
   This version is documented in [Chiarcos and Schenk (2018)](http://www.lrec-conf.org/proceedings/lrec2018/pdf/869.pdf)
   
 References
