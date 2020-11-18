@@ -291,7 +291,7 @@ public class CoNLLAlign {
 							lastLine=lastLine+s+"\t";
 						lastLine=lastLine.replaceFirst("\t$","");
 					}
-				} else if(last[col1].startsWith("*RETOK*-")) {	// only if sentence initial
+				} else if(last.length> col1 && last[col1].startsWith("*RETOK*-")) {	// only if sentence initial
 						for(int i = 0; i<last.length; i++)
 							if(i!=col1 && i<fields.length) {
 								if(last[i].contains("*"))
