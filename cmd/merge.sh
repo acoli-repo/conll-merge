@@ -52,7 +52,7 @@ if [ $STATUS = 'ok' ]; then
 	done;
 	echo > $TMP;
 	for file in $*; do
-		if egrep . $TMP >/dev/null; then echo >/dev/null;
+		if egrep -a . $TMP >/dev/null; then echo >/dev/null;
 		else
 			if [ -e $file ]; then
 				cp $file $TMP;
