@@ -1,7 +1,7 @@
 import sys,os,re,traceback,myers
 from pprint import pprint
 from weighted_levenshtein import lev
-import unicodedata
+import unicodedata, traceback
 
 """
 	Given two CoNLL files, perform an alignment based on string identity (Myer's
@@ -45,10 +45,13 @@ def merge_levenshtein(pool,buffers,cols,lens,matrix, *flags):
 
 	if len(pool[1])==0:
 		for x in pool[0]:
-			if len(buffers[0][x])==1 and buffers[0][x][0]=="":
-				result.append(buffers[0][x])
-			else:
-				result.append( buffers[0][x]+["?"]*lens[1])
+			try:
+				if len(buffers[0][x])==1 and buffers[0][x][0]=="":
+					result.append(buffers[0][x])
+				elif len(lens)>1:
+					result.append( buffers[0][x]+["?"]*lens[1])
+			except Exception:
+				traceback.print_exc()
 		return result
 
 	if matrix==None:
@@ -302,7 +305,8 @@ while buffers!=None:
 		if not lens:
 			lens=[]
 			for b in buffers:
-				lens.append(max([len(row) for row in b ]))
+				if len(b)>0:
+					lens.append(max([len(row) for row in b ]))
 
 		#print(buffers)
 		#print("m",end="")
