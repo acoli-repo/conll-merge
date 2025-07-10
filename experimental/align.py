@@ -165,8 +165,10 @@ def fill_buffers(window, buffers, inputs, cols):
 						if x > 0:	# we keep comments of the first file only
 							if line.strip().startswith("#"):
 								line=""
+						
 						if x <len(buffers)-1:
-							line=re.sub(r"([^\\])#.*",r"\1",line) #  we keep inline comments of *last* file only
+							line=re.sub(r"\s#.*","",line) #  we keep inline comments of *last* file only
+							# note that we want to keep URLs, i.e., only # after whitespace is actually considered a comment
 
 						if x==0 or len(line)>0:	#	we drop line breaks of non-first files
 							row=line.split("\t")
